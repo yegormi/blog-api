@@ -5,7 +5,7 @@ struct CreateToken: AsyncMigration {
         try await database.schema("tokens")
             .id()
             .field("token", .string, .required)
-            .field("userID", .uuid, .required, .references("users", "id"))
+            .field("user_id", .uuid, .required, .references("users", "id"))
             .field("expires_at", .string)
             .create()
     }

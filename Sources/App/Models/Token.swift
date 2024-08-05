@@ -27,7 +27,7 @@ final class Token: Model, @unchecked Sendable {
     @Field(key: "token")
     var token: String
 
-    @Parent(key: "userID")
+    @Parent(key: "user_id")
     var user: User
 
     @Timestamp(key: "expires_at", on: .none, format: .iso8601)

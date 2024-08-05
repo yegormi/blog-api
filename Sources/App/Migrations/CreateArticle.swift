@@ -6,8 +6,8 @@ struct CreateArticle: AsyncMigration {
             .id()
             .field("title", .string, .required)
             .field("content", .string, .required)
-            .field("created_at", .datetime)
-            .field("updated_at", .datetime)
+            .field("created_at", .string)
+            .field("updated_at", .string)
             .create()
     }
 

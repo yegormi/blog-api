@@ -18,7 +18,9 @@ struct AuthController: RouteCollection {
         let request = try req.content.decode(RegisterRequest.self)
 
         let normalizedUsername = request.username.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedEmail = request.email.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
 
+        // Check if username already exists
         if
             let _ = try await User.query(on: req.db)
                 .filter(\.$username == normalizedUsername)
@@ -27,8 +29,18 @@ struct AuthController: RouteCollection {
             throw Abort(.conflict, reason: "A user with this username already exists")
         }
 
+        // Check if email already exists
+        if
+            let _ = try await User.query(on: req.db)
+                .filter(\.$email == normalizedEmail)
+                .first()
+        {
+            throw Abort(.conflict, reason: "A user with this email already exists")
+        }
+
         let user = try User(
             username: request.username,
+            email: request.email,
             passwordHash: Bcrypt.hash(request.password)
         )
         try await user.save(on: req.db)
@@ -42,10 +54,10 @@ struct AuthController: RouteCollection {
 
         guard
             let user = try await User.query(on: req.db)
-                .filter(\.$username == loginRequest.username)
+                .filter(\.$email == loginRequest.email)
                 .first()
         else {
-            throw Abort(.unauthorized, reason: "Invalid username")
+            throw Abort(.unauthorized, reason: "Invalid email")
         }
 
         guard try Bcrypt.verify(loginRequest.password, created: user.passwordHash) else {

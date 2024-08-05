@@ -13,10 +13,10 @@ final class Article: Model, @unchecked Sendable {
     @Field(key: "content")
     var content: String
 
-    @Timestamp(key: "created_at", on: .create)
+    @Timestamp(key: "created_at", on: .create, format: .iso8601)
     var createdAt: Date?
 
-    @Timestamp(key: "updated_at", on: .update)
+    @Timestamp(key: "updated_at", on: .update, format: .iso8601)
     var updatedAt: Date?
 
     init() {}

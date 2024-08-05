@@ -6,7 +6,7 @@ struct CreateToken: AsyncMigration {
             .id()
             .field("token", .string, .required)
             .field("userID", .uuid, .required, .references("users", "id"))
-            .field("expires_at", .datetime, .required)
+            .field("expires_at", .string)
             .create()
     }
 

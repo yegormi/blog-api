@@ -18,7 +18,7 @@ struct BearerAuthenticator: AsyncMiddleware {
             throw Abort(.unauthorized, reason: "Invalid token")
         }
         /// Verify token expiration
-        guard token.expiresAt > Date() else {
+        guard let expiresAt = token.expiresAt, expiresAt > Date() else {
             throw Abort(.unauthorized, reason: "Token expired")
         }
         /// Verify JWT signature and payload

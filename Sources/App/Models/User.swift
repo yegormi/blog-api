@@ -12,27 +12,31 @@ final class User: Model, @unchecked Sendable {
     @Field(key: "username")
     var username: String
 
+    @Field(key: "email")
+    var email: String
+
     @Field(key: "password_hash")
     var passwordHash: String
 
-    @Timestamp(key: "created_at", on: .create)
+    @Timestamp(key: "created_at", on: .create, format: .iso8601)
     var createdAt: Date?
 
-    @Timestamp(key: "updated_at", on: .update)
+    @Timestamp(key: "updated_at", on: .update, format: .iso8601)
     var updatedAt: Date?
 
     init() {}
 
-    init(id: UUID? = nil, username: String, passwordHash: String) {
+    init(id: UUID? = nil, username: String, email: String, passwordHash: String) {
         self.id = id
         self.username = username
+        self.email = email
         self.passwordHash = passwordHash
     }
 }
 
 extension User {
     func toDTO() -> UserDTO {
-        .init(id: self.id, username: self.username)
+        .init(id: self.id, email: self.email, username: self.username)
     }
 }
 

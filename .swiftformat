@@ -1,0 +1,26 @@
+# format options
+--allman false
+--indent 4
+--header strip
+--self insert
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections before-first
+--wrapreturntype preserve
+--wrapeffects if-multiline
+--wrapconditions before-first
+--funcattributes prev-line
+--typeattributes prev-line
+--storedvarattrs prev-line
+--marktypes never
+--redundanttype inferred
+--maxwidth 130
+--shortoptionals always
+
+# file options
+--swiftversion 5.10
+--exclude Package.swift
+
+# rules
+--enable isEmpty
+--disable genericExtensions

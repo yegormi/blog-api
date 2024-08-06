@@ -7,20 +7,22 @@
 --wrapparameters before-first
 --wrapcollections before-first
 --wrapreturntype preserve
---wrapeffects if-multiline
+--wrapeffects preserve
 --wrapconditions before-first
 --funcattributes prev-line
 --typeattributes prev-line
---storedvarattrs prev-line
+--computedvarattrs prev-line
 --marktypes never
 --redundanttype inferred
 --maxwidth 130
 --shortoptionals always
+--organizationmode visibility
+--patternlet inline
 
 # file options
 --swiftversion 5.10
---exclude Package.swift
+--exclude BuildTools, Package.swift
 
 # rules
 --enable isEmpty
---disable genericExtensions
+--disable genericExtensions, trailingSpace, blankLinesAroundMark, trailingCommas, preferForLoop, andOperator, wrapMultilineStatementBraces

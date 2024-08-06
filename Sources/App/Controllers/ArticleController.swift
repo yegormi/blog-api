@@ -3,8 +3,9 @@ import Vapor
 
 struct ArticleController: RouteCollection {
     func boot(routes: RoutesBuilder) throws {
-        let routes = routes.grouped("articles")
-        let articles = routes.grouped(BearerAuthenticator())
+        let articles = routes
+            .grouped("articles")
+            .grouped(JWTMiddleware())
 
         articles.get(use: self.index)
         articles.post(use: self.create)
@@ -17,7 +18,9 @@ struct ArticleController: RouteCollection {
 
     @Sendable
     func index(req: Request) async throws -> [ArticleDTO] {
-        try await Article.query(on: req.db).all().map { $0.toDTO() }
+        try await Article.query(on: req.db)
+            .all()
+            .map { $0.toDTO() }
     }
 
     @Sendable

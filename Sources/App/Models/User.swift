@@ -18,6 +18,9 @@ final class User: Model, @unchecked Sendable {
     @Field(key: "password_hash")
     var passwordHash: String
 
+    @Children(for: \.$user)
+    var articles: [Article]
+
     @Timestamp(key: "created_at", on: .create, format: .iso8601)
     var createdAt: Date?
 

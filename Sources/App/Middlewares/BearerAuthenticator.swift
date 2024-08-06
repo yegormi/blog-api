@@ -2,7 +2,7 @@ import Fluent
 import JWT
 import Vapor
 
-struct BearerAuthenticator: AsyncMiddleware {
+struct JWTMiddleware: AsyncMiddleware {
     func respond(to request: Request, chainingTo next: AsyncResponder) async throws -> Response {
         /// Get bearer token from Headers
         guard let bearer = request.headers.bearerAuthorization else {

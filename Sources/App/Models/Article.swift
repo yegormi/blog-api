@@ -13,6 +13,12 @@ final class Article: Model, @unchecked Sendable {
     @Field(key: "content")
     var content: String
 
+    @Parent(key: "user_id")
+    var user: User
+
+    @Children(for: \.$article)
+    var comments: [Comment]
+
     @Timestamp(key: "created_at", on: .create, format: .iso8601)
     var createdAt: Date?
 
@@ -21,10 +27,11 @@ final class Article: Model, @unchecked Sendable {
 
     init() {}
 
-    init(id: UUID? = nil, title: String, content: String) {
+    init(id: UUID? = nil, title: String, content: String, userID: User.IDValue) {
         self.id = id
         self.title = title
         self.content = content
+        self.$user.id = userID
     }
 }
 
@@ -32,8 +39,9 @@ extension Article {
     func toDTO() -> ArticleDTO {
         .init(
             id: self.id,
-            title: self.$title.value,
-            content: self.$content.value
+            title: self.title,
+            content: self.content,
+            userId: self.$user.id
         )
     }
 }

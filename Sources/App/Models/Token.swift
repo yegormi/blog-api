@@ -48,3 +48,13 @@ extension Token {
         .init(token: self.token, user: self.user.toDTO())
     }
 }
+
+extension Token: ModelTokenAuthenticatable {
+    static let valueKey = \Token.$token
+    static let userKey = \Token.$user
+
+    var isValid: Bool {
+        guard let expiresAt = self.expiresAt else { return false }
+        return expiresAt > Date()
+    }
+}

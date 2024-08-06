@@ -7,8 +7,6 @@ analyzer_rules:
   - unused_declaration
   - unused_import
 opt_in_rules:
-  - attributes
-  - closure_end_indentation
   - closure_spacing
   - collection_alignment
   - comma_inheritance
@@ -33,7 +31,6 @@ opt_in_rules:
   - multiline_parameters_brackets
   - operator_usage_whitespace
   - overridden_super_call
-  - pattern_matching_keywords
   - prefer_self_type_over_type_of_self
   - redundant_nil_coalescing
   - redundant_type_annotation
@@ -50,20 +47,25 @@ disabled_rules:
   - todo
   - line_length
   - opening_brace
+  - large_tuple
 
 force_cast: warning
 force_try: warning
 
+type_body_length:
+  - 600 # warning
+  - 700 # error
+
+file_length:
+  warning: 700
+  error: 900
+
+generic_type_name:
+  warning: 45
+  error: 50
+
 function_body_length:
   warning: 60
-
-attributes:
-  attributes_with_arguments_always_on_line_above: false
-
-# line_length:
-#   ignores_urls: true
-#   ignores_function_declarations: true
-#   ignores_comments: true
 
 multiline_arguments:
   first_argument_location: next_line
@@ -72,12 +74,23 @@ multiline_arguments:
 private_over_fileprivate:
   validate_extensions: true
 
-trailing_whitespace:
-  ignores_empty_lines: false
-  ignores_comments: true
-
 vertical_whitespace:
-  max_empty_lines: 2
+  max_empty_lines: 1
 
 trailing_comma:
   mandatory_comma: true
+
+type_name:
+  excluded:
+    - ID
+
+identifier_name:
+  min_length:
+    warning: 2
+    error: 1
+  excluded: # excluded via string array
+    - id
+    - URL
+
+cyclomatic_complexity:
+  ignores_case_statements: true

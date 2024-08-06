@@ -14,9 +14,6 @@ public func configure(_ app: Application) async throws {
     encoder.outputFormatting = [.sortedKeys, .prettyPrinted]
     ContentConfiguration.global.use(encoder: encoder, for: .json)
 
-    app.http.server.configuration.hostname = Environment.get("APP_URL") ?? "127.0.0.1"
-    app.http.server.configuration.port = Int(Environment.get("APP_PORT") ?? "8080") ?? 8080
-
     try app.databases.use(DatabaseConfigurationFactory.postgres(
         configuration: .init(
             hostname: Environment.get("DATABASE_HOST") ?? "localhost",
@@ -28,9 +25,11 @@ public func configure(_ app: Application) async throws {
         )
     ), as: .psql)
 
-    app.migrations.add(CreateArticle())
     app.migrations.add(CreateUser())
     app.migrations.add(CreateToken())
+    app.migrations.add(CreateArticle())
+    app.migrations.add(CreateComment())
+    app.migrations.add(Seeds())
 
     guard let jwtSecret = Environment.get("JWT_SECRET") else {
         fatalError("JWT_SECRET environment variable is not set")

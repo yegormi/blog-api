@@ -8,8 +8,11 @@ struct AuthController: RouteCollection {
         auth.post("login", use: self.login)
         auth.post("register", use: self.register)
 
-        let protected = auth.grouped(BearerAuthenticator())
+        let protected = auth.grouped(JWTMiddleware())
+
         protected.get("me", use: self.getMe)
+        protected.post("logout", use: self.logout)
+        protected.delete("delete", use: self.deleteAccount)
     }
 
     @Sendable
@@ -24,8 +27,7 @@ struct AuthController: RouteCollection {
         if
             let _ = try await User.query(on: req.db)
                 .filter(\.$username == normalizedUsername)
-                .first()
-        {
+                .first() {
             throw Abort(.conflict, reason: "A user with this username already exists")
         }
 
@@ -33,8 +35,7 @@ struct AuthController: RouteCollection {
         if
             let _ = try await User.query(on: req.db)
                 .filter(\.$email == normalizedEmail)
-                .first()
-        {
+                .first() {
             throw Abort(.conflict, reason: "A user with this email already exists")
         }
 
@@ -66,9 +67,40 @@ struct AuthController: RouteCollection {
 
         let bearer = try user.generateToken(using: req.application)
         try await bearer.save(on: req.db)
-        req.auth.login(user)
 
         return TokenDTO(token: bearer.token, user: user.toDTO())
+    }
+
+    @Sendable
+    func logout(req: Request) async throws -> HTTPStatus {
+        let user = try req.auth.require(User.self)
+        /// Invalidate all tokens for the user or the specific token used for the request
+        try await Token.query(on: req.db)
+            .filter(\.$user.$id == user.requireID())
+            .delete()
+        return .ok
+    }
+
+    @Sendable
+    func deleteAccount(req: Request) async throws -> HTTPStatus {
+        let user = try req.auth.require(User.self)
+        /// Start a transaction
+        try await req.db.transaction { database in
+            /// Delete all tokens associated with the user
+            try await Token.query(on: database)
+                .filter(\.$user.$id == user.id!)
+                .delete()
+
+            /// Delete all comments associated with the user
+            try await Comment.query(on: database)
+                .filter(\.$user.$id == user.id!)
+                .delete()
+
+            // Delete the user
+            try await user.delete(on: database)
+        }
+        try await user.delete(on: req.db)
+        return .ok
     }
 
     @Sendable

@@ -7,11 +7,11 @@ struct ArticleDTO: Content {
     var content: String?
     var userId: UUID?
 
-    func toModel() -> Article {
+    func toModel(with id: User.IDValue) -> Article {
         let model = Article()
 
         model.id = self.id
-        model.user.id = self.userId
+        model.$user.id = id
 
         if let title = self.title {
             model.title = title

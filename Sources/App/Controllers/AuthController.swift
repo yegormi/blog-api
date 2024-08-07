@@ -84,21 +84,6 @@ struct AuthController: RouteCollection {
     @Sendable
     func deleteAccount(req: Request) async throws -> HTTPStatus {
         let user = try req.auth.require(User.self)
-        /// Start a transaction
-        try await req.db.transaction { database in
-            /// Delete all tokens associated with the user
-            try await Token.query(on: database)
-                .filter(\.$user.$id == user.id!)
-                .delete()
-
-            /// Delete all comments associated with the user
-            try await Comment.query(on: database)
-                .filter(\.$user.$id == user.id!)
-                .delete()
-
-            // Delete the user
-            try await user.delete(on: database)
-        }
         try await user.delete(on: req.db)
         return .ok
     }

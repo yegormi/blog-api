@@ -44,7 +44,7 @@
     
     <h2>Authentication</h2>
     <p>This API uses token-based authentication. To access protected endpoints, include the token in the Authorization header:</p>
-    <code>Authorization: Bearer your_token_here</code>
+    <code>Authorization: Bearer JWT_TOKEN</code>
     
     <h2>Endpoints</h2>
     
@@ -68,7 +68,7 @@
         <tr>
             <td>GET</td>
             <td>/auth/me</td>
-            <td>Get current user information (protected)</td>
+            <td>Get current user information</td>
         </tr>
     </table>
     
@@ -87,7 +87,7 @@
         <tr>
             <td>POST</td>
             <td>/articles</td>
-            <td>Create a new article (protected)</td>
+            <td>Create a new article</td>
         </tr>
         <tr>
             <td>GET</td>
@@ -97,12 +97,46 @@
         <tr>
             <td>PUT</td>
             <td>/articles/:id</td>
-            <td>Update an article (protected)</td>
+            <td>Update an article</td>
         </tr>
         <tr>
             <td>DELETE</td>
             <td>/articles/:id</td>
-            <td>Delete an article (protected)</td>
+            <td>Delete an article</td>
+        </tr>
+    </table>
+    
+    <h3>Comments</h3>
+    <table>
+        <tr>
+            <th>Method</th>
+            <th>Endpoint</th>
+            <th>Description</th>
+        </tr>
+        <tr>
+            <td>GET</td>
+            <td>/articles/:articleID/comments</td>
+            <td>List all comments for an article</td>
+        </tr>
+        <tr>
+            <td>POST</td>
+            <td>/articles/:articleID/comments</td>
+            <td>Create a new comment for an article</td>
+        </tr>
+        <tr>
+            <td>GET</td>
+            <td>/articles/:articleID/comments/:commentID</td>
+            <td>Get a single comment for an article</td>
+        </tr>
+        <tr>
+            <td>PUT</td>
+            <td>/articles/:articleID/comments/:commentID</td>
+            <td>Update a comment for an article</td>
+        </tr>
+        <tr>
+            <td>DELETE</td>
+            <td>/articles/:articleID/comments/:commentID</td>
+            <td>Delete a comment for an article</td>
         </tr>
     </table>
     

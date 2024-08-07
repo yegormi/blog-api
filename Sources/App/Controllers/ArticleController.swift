@@ -25,7 +25,9 @@ struct ArticleController: RouteCollection {
 
     @Sendable
     func create(req: Request) async throws -> ArticleDTO {
-        let article = try req.content.decode(ArticleDTO.self).toModel()
+        let user = try req.auth.require(User.self)
+
+        let article = try req.content.decode(ArticleDTO.self).toModel(with: user.requireID())
         try await article.save(on: req.db)
         return article.toDTO()
     }
@@ -40,7 +42,9 @@ struct ArticleController: RouteCollection {
 
     @Sendable
     func update(req: Request) async throws -> ArticleDTO {
-        let updatedArticle = try req.content.decode(ArticleDTO.self).toModel()
+        let user = try req.auth.require(User.self)
+
+        let updatedArticle = try req.content.decode(ArticleDTO.self).toModel(with: user.requireID())
 
         guard let article = try await Article.find(req.parameters.get("articleID"), on: req.db) else {
             throw APIError.articleNotFound

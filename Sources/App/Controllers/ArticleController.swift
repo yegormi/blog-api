@@ -18,9 +18,20 @@ struct ArticleController: RouteCollection {
 
     @Sendable
     func index(req: Request) async throws -> [ArticleDTO] {
-        try await Article.query(on: req.db)
-            .all()
-            .map { $0.toDTO() }
+        if let query = req.query[String.self, at: "q"] {
+            let queryNormalized = query.lowercased()
+            return try await Article.query(on: req.db)
+                .group(.or) { group in
+                    group.filter(\.$title ~~ queryNormalized)
+                    group.filter(\.$content ~~ queryNormalized)
+                }
+                .all()
+                .map { $0.toDTO() }
+        } else {
+            return try await Article.query(on: req.db)
+                .all()
+                .map { $0.toDTO() }
+        }
     }
 
     @Sendable

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Avatar</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        button {
+            width: 100px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Upload Avatar</h1>
+    #if(errorMessage):
+        <p style="color: red;">#(errorMessage)</p>
+    #endif
+    #if(successMessage):
+        <p style="color: green;">#(successMessage)</p>
+    #endif
+    <form action="/auth/avatar/upload" method="POST" enctype="multipart/form-data">
+        <input type="file" name="avatar" accept="image/*" required>
+        <button type="submit">Upload</button>
+    </form>
+</body>
+</html>

@@ -8,7 +8,7 @@
 --wrapcollections before-first
 --wrapreturntype preserve
 --wrapeffects preserve
---wrapconditions before-first
+--wrapconditions preserve
 --funcattributes prev-line
 --typeattributes prev-line
 --computedvarattrs prev-line

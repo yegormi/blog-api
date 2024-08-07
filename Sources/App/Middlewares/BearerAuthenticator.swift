@@ -11,9 +11,9 @@ struct JWTMiddleware: AsyncMiddleware {
         /// Compare token from DB to the one in request
         guard
             let token = try await Token.query(on: request.db)
-                .filter(\.$token == bearer.token)
-                .with(\.$user)
-                .first()
+            .filter(\.$token == bearer.token)
+            .with(\.$user)
+            .first()
         else {
             throw Abort(.unauthorized, reason: "Invalid token")
         }

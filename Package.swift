@@ -19,6 +19,8 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-nio.git", from: "2.65.0"),
         // 🔐 JWT-based token library to provide legal methods to create and sign payload
         .package(url: "https://github.com/vapor/jwt.git", from: "4.0.0"),
+        // ☁️ Amazon S3 library used to upload and store images
+        .package(url: "https://github.com/soto-project/soto", from: "7.0.0"),
     ],
     targets: [
         .executableTarget(
@@ -31,6 +33,7 @@ let package = Package(
                 .product(name: "NIOCore", package: "swift-nio"),
                 .product(name: "NIOPosix", package: "swift-nio"),
                 .product(name: "JWT", package: "jwt"),
+                .product(name: "SotoS3", package: "soto"),
             ],
             swiftSettings: swiftSettings
         ),

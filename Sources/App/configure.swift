@@ -3,12 +3,23 @@ import FluentPostgresDriver
 import JWT
 import Leaf
 import NIOSSL
+import SotoCore
+import SotoS3
 import Vapor
 
 // configures your application
 public func configure(_ app: Application) async throws {
     // uncomment to serve files from /Public folder
     // app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
+
+    let awsClient = AWSClient(
+        credentialProvider: .static(
+            accessKeyId: Environment.get("AWS_ACCESS_KEY_ID") ?? "",
+            secretAccessKey: Environment.get("AWS_SECRET_ACCESS_KEY") ?? ""
+        )
+    )
+
+    app.awsClient = awsClient
 
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.sortedKeys, .prettyPrinted]
@@ -40,4 +51,24 @@ public func configure(_ app: Application) async throws {
 
     // register routes
     try routes(app)
+}
+
+public struct BucketStorageKey: StorageKey {
+    public typealias Value = AWSClient
+}
+
+extension Application {
+    var awsClient: AWSClient {
+        get {
+            guard let client = self.storage[BucketStorageKey.self] else {
+                fatalError("AWSClient not setup. Use app.awsClient = ...")
+            }
+            return client
+        }
+        set {
+            self.storage.set(BucketStorageKey.self, to: newValue) {
+                try $0.syncShutdown()
+            }
+        }
+    }
 }

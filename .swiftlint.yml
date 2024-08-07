@@ -48,6 +48,8 @@ disabled_rules:
   - line_length
   - opening_brace
   - large_tuple
+  - first_where
+  - contains_over_first_not_nil
 
 force_cast: warning
 force_try: warning

@@ -18,6 +18,9 @@ final class User: Model, @unchecked Sendable {
     @Field(key: "password_hash")
     var passwordHash: String
 
+    @OptionalField(key: "avatar_url")
+    var avatarUrl: String?
+
     @Children(for: \.$user)
     var articles: [Article]
 
@@ -39,7 +42,7 @@ final class User: Model, @unchecked Sendable {
 
 extension User {
     func toDTO() -> UserDTO {
-        .init(id: self.id, email: self.email, username: self.username)
+        .init(id: self.id, email: self.email, username: self.username, avatarUrl: self.avatarUrl)
     }
 }
 

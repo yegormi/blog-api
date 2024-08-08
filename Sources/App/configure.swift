@@ -20,6 +20,7 @@ public func configure(_ app: Application) async throws {
     )
 
     app.awsClient = awsClient
+    app.fileStorage = S3Service(client: app.awsClient, config: .default)
 
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.sortedKeys, .prettyPrinted]
@@ -38,9 +39,9 @@ public func configure(_ app: Application) async throws {
 
     app.migrations.add(CreateUser())
     app.migrations.add(CreateToken())
+    app.migrations.add(CreateAvatar())
     app.migrations.add(CreateArticle())
     app.migrations.add(CreateComment())
-    app.migrations.add(Seeds())
 
     guard let jwtSecret = Environment.get("JWT_SECRET") else {
         fatalError("JWT_SECRET environment variable is not set")
@@ -70,5 +71,29 @@ extension Application {
                 try $0.syncShutdown()
             }
         }
+    }
+}
+
+public struct FileStorageKey: StorageKey {
+    public typealias Value = FileStorageService
+}
+
+extension Application {
+    var fileStorage: FileStorageService {
+        get {
+            guard let storage = storage[FileStorageKey.self] else {
+                fatalError("FileStorage not configured. Use app.fileStorage = ...")
+            }
+            return storage
+        }
+        set {
+            storage[FileStorageKey.self] = newValue
+        }
+    }
+}
+
+extension Request {
+    var fileStorage: FileStorageService {
+        self.application.fileStorage
     }
 }

@@ -44,8 +44,8 @@ final class Token: Model, @unchecked Sendable {
 }
 
 extension Token {
-    func toDTO() -> TokenDTO {
-        .init(token: self.token, user: self.user.toDTO())
+    func toDTO(fileStorage: FileStorageService) -> TokenDTO {
+        .init(token: self.token, user: self.user.toDTO(fileStorage: fileStorage))
     }
 }
 

@@ -28,14 +28,12 @@ struct AuthController: RouteCollection {
         let normalizedUsername = request.username.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         let normalizedEmail = request.email.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
 
-        /// Check if username already exists
         if try await User.query(on: req.db)
             .filter(\.$username == normalizedUsername)
             .first() != nil {
             throw Abort(.conflict, reason: "A user with this username already exists")
         }
 
-        /// Check if email already exists
         if try await User.query(on: req.db)
             .filter(\.$email == normalizedEmail)
             .first() != nil {
@@ -48,7 +46,7 @@ struct AuthController: RouteCollection {
             passwordHash: Bcrypt.hash(request.password)
         )
         try await user.save(on: req.db)
-        return user.toDTO()
+        return user.toDTO(fileStorage: req.fileStorage)
     }
 
     @Sendable
@@ -56,8 +54,7 @@ struct AuthController: RouteCollection {
         try LoginRequest.validate(content: req)
         let loginRequest = try req.content.decode(LoginRequest.self)
 
-        guard
-            let user = try await User.query(on: req.db)
+        guard let user = try await User.query(on: req.db)
             .filter(\.$email == loginRequest.email)
             .first()
         else {
@@ -71,7 +68,7 @@ struct AuthController: RouteCollection {
         let bearer = try user.generateToken(using: req.application)
         try await bearer.save(on: req.db)
 
-        return TokenDTO(token: bearer.token, user: user.toDTO())
+        return TokenDTO(token: bearer.token, user: user.toDTO(fileStorage: req.fileStorage))
     }
 
     @Sendable
@@ -88,11 +85,9 @@ struct AuthController: RouteCollection {
     func deleteAccount(req: Request) async throws -> HTTPStatus {
         let user = try req.auth.require(User.self)
 
-        // Delete user's avatar from S3 if it exists
-        if let avatarUrl = user.avatarUrl,
-           let avatarKey = avatarUrl.components(separatedBy: ".com/").last {
-            let service = S3Service(req.application, req: req)
-            try await service.deleteFile(key: avatarKey)
+        if let avatar = try await user.$avatar.get(on: req.db) {
+            try await req.fileStorage.deleteFile(key: avatar.key)
+            try await avatar.delete(on: req.db)
         }
 
         try await user.delete(on: req.db)
@@ -102,7 +97,15 @@ struct AuthController: RouteCollection {
     @Sendable
     func getProfile(req: Request) async throws -> UserDTO {
         let user = try req.auth.require(User.self)
-        return user.toDTO()
+        guard let userDB = try await User.query(on: req.db)
+            .filter(\.$id == user.requireID())
+            .with(\.$avatar)
+            .first()
+        else {
+            throw Abort(.badRequest, reason: "No user found")
+        }
+
+        return userDB.toDTO(fileStorage: req.fileStorage)
     }
 
     @Sendable
@@ -115,43 +118,41 @@ struct AuthController: RouteCollection {
         }
 
         let fileName = "\(UUID().uuidString.lowercased()).\(fileExtension)"
-        let service = S3Service(req.application, req: req)
+        let key = "avatars/\(fileName)"
 
-        /// If user already has an avatar, delete it
-        if let existingAvatarUrl = user.avatarUrl,
-           let existingKey = existingAvatarUrl.components(separatedBy: ".com/").last {
-            try await service.deleteFile(key: existingKey)
+        // Delete old avatar if it exists
+        if let existingAvatar = try await user.$avatar.get(on: req.db) {
+            try await req.fileStorage.deleteFile(key: existingAvatar.key)
+            try await existingAvatar.delete(on: req.db)
         }
 
-        /// Upload new avatar
-        guard let avatarUrl = try await service.uploadFile(file, key: "avatars/\(fileName)") else {
-            throw Abort(.internalServerError, reason: "Failed to upload file")
-        }
+        // Upload new avatar
+        _ = try await req.fileStorage.uploadFile(file, key: key)
 
-        user.avatarUrl = avatarUrl
+        // Create new Avatar
+        let avatar = try Avatar(key: key, originalFilename: file.filename, userID: user.requireID())
+        try await avatar.save(on: req.db)
+        user.$avatar.value = avatar
+
         try await user.save(on: req.db)
 
-        return user.toDTO()
+        return user.toDTO(fileStorage: req.fileStorage)
     }
 
     @Sendable
     func removeAvatar(req: Request) async throws -> UserDTO {
         let user = try req.auth.require(User.self)
 
-        guard let avatarUrl = user.avatarUrl else {
+        guard let avatar = try await user.$avatar.get(on: req.db) else {
             throw Abort(.notFound, reason: "User does not have an avatar")
         }
 
-        let service = S3Service(req.application, req: req)
-        guard let key = avatarUrl.components(separatedBy: ".com/").last else {
-            throw Abort(.badRequest, reason: "Invalid stored URL")
-        }
+        try await req.fileStorage.deleteFile(key: avatar.key)
+        try await avatar.delete(on: req.db)
+        user.$avatar.value = nil
 
-        try await service.deleteFile(key: key)
-
-        user.avatarUrl = nil
         try await user.save(on: req.db)
 
-        return user.toDTO()
+        return user.toDTO(fileStorage: req.fileStorage)
     }
 }

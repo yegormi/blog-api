@@ -18,8 +18,8 @@ final class User: Model, @unchecked Sendable {
     @Field(key: "password_hash")
     var passwordHash: String
 
-    @OptionalField(key: "avatar_url")
-    var avatarUrl: String?
+    @OptionalChild(for: \.$user)
+    var avatar: Avatar?
 
     @Children(for: \.$user)
     var articles: [Article]
@@ -41,8 +41,19 @@ final class User: Model, @unchecked Sendable {
 }
 
 extension User {
-    func toDTO() -> UserDTO {
-        .init(id: self.id, email: self.email, username: self.username, avatarUrl: self.avatarUrl)
+    func toDTO(fileStorage: FileStorageService) -> UserDTO {
+        UserDTO(
+            id: self.id,
+            email: self.email,
+            username: self.username,
+            avatarUrl: {
+                if let avatar = self.$avatar.value, let key = avatar?.key {
+                    fileStorage.getFileURL(for: key)
+                } else {
+                    nil
+                }
+            }()
+        )
     }
 }
 

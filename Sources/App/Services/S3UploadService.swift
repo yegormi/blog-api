@@ -1,7 +1,7 @@
 import SotoS3
 import Vapor
 
-struct S3UploadService {
+struct S3Service {
     let app: Application
     let req: Request
     let bucketName: String
@@ -27,5 +27,13 @@ struct S3UploadService {
         _ = try await s3.multipartUpload(multipartRequest, buffer: file.data)
 
         return "https://\(self.bucketName).s3.\(self.region.rawValue).amazonaws.com/\(key)"
+    }
+
+    func deleteFile(key: String) async throws {
+        let s3 = S3(client: self.app.awsClient, region: self.region)
+
+        let deleteRequest = S3.DeleteObjectRequest(bucket: self.bucketName, key: key)
+
+        _ = try await s3.deleteObject(deleteRequest)
     }
 }

@@ -5,16 +5,19 @@ import Vapor
 struct AuthController: RouteCollection {
     func boot(routes: RoutesBuilder) throws {
         let auth = routes.grouped("auth")
-        auth.post("login", use: self.login)
         auth.post("register", use: self.register)
+        auth.post("login", use: self.login)
 
-        let protected = auth.grouped(JWTMiddleware())
-        protected.get("me", use: self.getMe)
-        protected.post("logout", use: self.logout)
-        protected.delete("delete", use: self.deleteAccount)
+        let authenticated = auth.grouped(JWTMiddleware())
 
-        let avatar = protected.grouped("avatar")
+        let me = authenticated.grouped("me")
+        me.get(use: self.getProfile)
+        me.post("logout", use: self.logout)
+        me.delete(use: self.deleteAccount)
+
+        let avatar = me.grouped("avatar")
         avatar.on(.POST, "upload", body: .collect(maxSize: "10mb"), use: self.uploadAvatar)
+        avatar.on(.DELETE, "remove", use: self.removeAvatar)
     }
 
     @Sendable
@@ -89,7 +92,7 @@ struct AuthController: RouteCollection {
     }
 
     @Sendable
-    func getMe(req: Request) async throws -> UserDTO {
+    func getProfile(req: Request) async throws -> UserDTO {
         let user = try req.auth.require(User.self)
         return user.toDTO()
     }
@@ -105,12 +108,33 @@ struct AuthController: RouteCollection {
 
         let fileName = "\(UUID().uuidString.lowercased()).\(fileExtension)"
 
-        let s3UploadService = S3UploadService(req.application, req: req)
-        guard let avatarUrl = try await s3UploadService.uploadFile(file, key: "avatars/\(fileName)") else {
+        let service = S3Service(req.application, req: req)
+        guard let avatarUrl = try await service.uploadFile(file, key: "avatars/\(fileName)") else {
             throw Abort(.internalServerError, reason: "Failed to upload file")
         }
 
         user.avatarUrl = avatarUrl
+        try await user.save(on: req.db)
+
+        return user.toDTO()
+    }
+
+    @Sendable
+    func removeAvatar(req: Request) async throws -> UserDTO {
+        let user = try req.auth.require(User.self)
+
+        guard let avatarUrl = user.avatarUrl else {
+            throw Abort(.notFound, reason: "User does not have an avatar")
+        }
+
+        let service = S3Service(req.application, req: req)
+        guard let key = avatarUrl.components(separatedBy: ".com/").last else {
+            throw Abort(.badRequest, reason: "Invalid stored URL")
+        }
+
+        try await service.deleteFile(key: key)
+
+        user.avatarUrl = nil
         try await user.save(on: req.db)
 
         return user.toDTO()

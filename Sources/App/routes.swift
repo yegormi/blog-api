@@ -6,14 +6,6 @@ func routes(_ app: Application) throws {
         try await req.view.render("index")
     }
 
-    app.get("hello") { _ async -> String in
-        "Hello, world!"
-    }
-
-    app.get("avatar") { req async throws in
-        try await req.view.render("avatar")
-    }
-
     try app.register(collection: ArticleController())
     try app.register(collection: AuthController())
     try app.register(collection: CommentController())

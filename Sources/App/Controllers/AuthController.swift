@@ -4,11 +4,11 @@ import Vapor
 
 struct AuthController: RouteCollection {
     func boot(routes: RoutesBuilder) throws {
+        let authenticated = routes.grouped(JWTMiddleware())
+
         let auth = routes.grouped("auth")
         auth.post("register", use: self.register)
         auth.post("login", use: self.login)
-
-        let authenticated = auth.grouped(JWTMiddleware())
 
         let me = authenticated.grouped("me")
         me.get(use: self.getProfile)
@@ -28,14 +28,14 @@ struct AuthController: RouteCollection {
         let normalizedUsername = request.username.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         let normalizedEmail = request.email.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
 
-        // Check if username already exists
+        /// Check if username already exists
         if try await User.query(on: req.db)
             .filter(\.$username == normalizedUsername)
             .first() != nil {
             throw Abort(.conflict, reason: "A user with this username already exists")
         }
 
-        // Check if email already exists
+        /// Check if email already exists
         if try await User.query(on: req.db)
             .filter(\.$email == normalizedEmail)
             .first() != nil {
@@ -87,6 +87,14 @@ struct AuthController: RouteCollection {
     @Sendable
     func deleteAccount(req: Request) async throws -> HTTPStatus {
         let user = try req.auth.require(User.self)
+
+        // Delete user's avatar from S3 if it exists
+        if let avatarUrl = user.avatarUrl,
+           let avatarKey = avatarUrl.components(separatedBy: ".com/").last {
+            let service = S3Service(req.application, req: req)
+            try await service.deleteFile(key: avatarKey)
+        }
+
         try await user.delete(on: req.db)
         return .ok
     }
@@ -103,12 +111,19 @@ struct AuthController: RouteCollection {
         let file = try req.content.decode(FileUpload.self).file
 
         guard let fileExtension = file.extension else {
-            throw Abort(.badRequest, reason: "Mailformed file")
+            throw Abort(.badRequest, reason: "Malformed file")
         }
 
         let fileName = "\(UUID().uuidString.lowercased()).\(fileExtension)"
-
         let service = S3Service(req.application, req: req)
+
+        /// If user already has an avatar, delete it
+        if let existingAvatarUrl = user.avatarUrl,
+           let existingKey = existingAvatarUrl.components(separatedBy: ".com/").last {
+            try await service.deleteFile(key: existingKey)
+        }
+
+        /// Upload new avatar
         guard let avatarUrl = try await service.uploadFile(file, key: "avatars/\(fileName)") else {
             throw Abort(.internalServerError, reason: "Failed to upload file")
         }

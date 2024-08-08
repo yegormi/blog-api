@@ -1,4 +1,3 @@
-import Fluent
 import Vapor
 
 struct LoginRequest: Content, Validatable {

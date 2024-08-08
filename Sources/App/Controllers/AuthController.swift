@@ -97,14 +97,13 @@ struct AuthController: RouteCollection {
     @Sendable
     func uploadAvatar(req: Request) async throws -> UserDTO {
         let user = try req.auth.require(User.self)
-
-        let file = try req.content.decode(File.self)
+        let file = try req.content.decode(FileUpload.self).file
 
         guard let fileExtension = file.extension else {
             throw Abort(.badRequest, reason: "Mailformed file")
         }
 
-        let fileName = "\(UUID().uuidString).\(fileExtension)"
+        let fileName = "\(UUID().uuidString.lowercased()).\(fileExtension)"
 
         let s3UploadService = S3UploadService(req.application, req: req)
         guard let avatarUrl = try await s3UploadService.uploadFile(file, key: "avatars/\(fileName)") else {

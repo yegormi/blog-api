@@ -41,18 +41,12 @@ final class User: Model, @unchecked Sendable {
 }
 
 extension User {
-    func toDTO(fileStorage: FileStorageService) -> UserDTO {
+    func toDTO(on req: Request) -> UserDTO {
         UserDTO(
             id: self.id,
             email: self.email,
             username: self.username,
-            avatarUrl: {
-                if let avatar = self.$avatar.value, let key = avatar?.key {
-                    fileStorage.getFileURL(for: key)
-                } else {
-                    nil
-                }
-            }()
+            avatarUrl: self.$avatar.value?.map { $0.toURL(on: req) }
         )
     }
 }

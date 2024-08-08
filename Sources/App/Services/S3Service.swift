@@ -7,27 +7,11 @@ public protocol FileStorageService: Sendable {
     func getFileURL(for key: String) -> String
 }
 
-struct S3Configuration {
-    let bucketName: String
-    let region: Region
-}
-
-extension S3Configuration {
-    static let `default` = S3Configuration(
-        bucketName: "storage-blog-api",
-        region: .eunorth1
-    )
-
-    var baseUrl: String {
-        "https://\(self.bucketName).s3.\(self.region.rawValue).amazonaws.com"
-    }
-}
-
 public struct S3Service: FileStorageService {
     private let s3: S3
     private let config: S3Configuration
 
-    init(client: AWSClient, config: S3Configuration = .default) {
+    init(client: AWSClient, config: S3Configuration) {
         self.s3 = S3(client: client, region: config.region)
         self.config = config
     }
@@ -53,6 +37,6 @@ public struct S3Service: FileStorageService {
     }
 
     public func getFileURL(for key: String) -> String {
-        "\(self.config.baseUrl)/\(key)"
+        "\(self.config.baseURL)/\(key)"
     }
 }

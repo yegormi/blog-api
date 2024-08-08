@@ -46,7 +46,7 @@ struct AuthController: RouteCollection {
             passwordHash: Bcrypt.hash(request.password)
         )
         try await user.save(on: req.db)
-        return user.toDTO(fileStorage: req.fileStorage)
+        return user.toDTO(on: req)
     }
 
     @Sendable
@@ -56,6 +56,7 @@ struct AuthController: RouteCollection {
 
         guard let user = try await User.query(on: req.db)
             .filter(\.$email == loginRequest.email)
+            .with(\.$avatar)
             .first()
         else {
             throw Abort(.unauthorized, reason: "Invalid email")
@@ -65,10 +66,10 @@ struct AuthController: RouteCollection {
             throw Abort(.unauthorized, reason: "Invalid password")
         }
 
-        let bearer = try user.generateToken(using: req.application)
-        try await bearer.save(on: req.db)
+        let token = try user.generateToken(using: req.application)
+        try await token.save(on: req.db)
 
-        return TokenDTO(token: bearer.token, user: user.toDTO(fileStorage: req.fileStorage))
+        return token.toDTO(with: user.toDTO(on: req))
     }
 
     @Sendable
@@ -85,18 +86,20 @@ struct AuthController: RouteCollection {
     func deleteAccount(req: Request) async throws -> HTTPStatus {
         let user = try req.auth.require(User.self)
 
-        if let avatar = try await user.$avatar.get(on: req.db) {
-            try await req.fileStorage.deleteFile(key: avatar.key)
-            try await avatar.delete(on: req.db)
+        try await req.db.transaction { transaction in
+            if let avatar = try await user.$avatar.get(on: transaction) {
+                try await req.fileStorage.deleteFile(key: avatar.key)
+            }
+            try await user.delete(on: transaction)
         }
 
-        try await user.delete(on: req.db)
         return .ok
     }
 
     @Sendable
     func getProfile(req: Request) async throws -> UserDTO {
         let user = try req.auth.require(User.self)
+
         guard let userDB = try await User.query(on: req.db)
             .filter(\.$id == user.requireID())
             .with(\.$avatar)
@@ -105,7 +108,7 @@ struct AuthController: RouteCollection {
             throw Abort(.badRequest, reason: "No user found")
         }
 
-        return userDB.toDTO(fileStorage: req.fileStorage)
+        return userDB.toDTO(on: req)
     }
 
     @Sendable
@@ -120,39 +123,52 @@ struct AuthController: RouteCollection {
         let fileName = "\(UUID().uuidString.lowercased()).\(fileExtension)"
         let key = "avatars/\(fileName)"
 
-        // Delete old avatar if it exists
-        if let existingAvatar = try await user.$avatar.get(on: req.db) {
-            try await req.fileStorage.deleteFile(key: existingAvatar.key)
-            try await existingAvatar.delete(on: req.db)
+        return try await req.db.transaction { transaction in
+            /// Delete old avatar if it exists
+            if let existingAvatar = try await user.$avatar.get(on: transaction) {
+                try await req.fileStorage.deleteFile(key: existingAvatar.key)
+                try await existingAvatar.delete(on: transaction)
+            }
+
+            /// Upload new avatar
+            _ = try await req.fileStorage.uploadFile(file, key: key)
+
+            /// Create new Avatar
+            let avatar = try Avatar(key: key, originalFilename: file.filename, userID: user.requireID())
+            try await user.$avatar.create(avatar, on: transaction)
+
+            guard let userDB = try await User.query(on: transaction)
+                .filter(\.$id == user.requireID())
+                .with(\.$avatar)
+                .first()
+            else {
+                throw Abort(.badRequest, reason: "No user found")
+            }
+
+            return userDB.toDTO(on: req)
         }
-
-        // Upload new avatar
-        _ = try await req.fileStorage.uploadFile(file, key: key)
-
-        // Create new Avatar
-        let avatar = try Avatar(key: key, originalFilename: file.filename, userID: user.requireID())
-        try await avatar.save(on: req.db)
-        user.$avatar.value = avatar
-
-        try await user.save(on: req.db)
-
-        return user.toDTO(fileStorage: req.fileStorage)
     }
 
     @Sendable
     func removeAvatar(req: Request) async throws -> UserDTO {
         let user = try req.auth.require(User.self)
 
-        guard let avatar = try await user.$avatar.get(on: req.db) else {
-            throw Abort(.notFound, reason: "User does not have an avatar")
+        return try await req.db.transaction { transaction in
+            guard let avatar = try await user.$avatar.get(on: transaction) else {
+                throw Abort(.notFound, reason: "User does not have an avatar")
+            }
+            try await req.fileStorage.deleteFile(key: avatar.key)
+            try await avatar.delete(on: transaction)
+
+            guard let userDB = try await User.query(on: transaction)
+                .filter(\.$id == user.requireID())
+                .with(\.$avatar)
+                .first()
+            else {
+                throw Abort(.badRequest, reason: "No user found")
+            }
+
+            return userDB.toDTO(on: req)
         }
-
-        try await req.fileStorage.deleteFile(key: avatar.key)
-        try await avatar.delete(on: req.db)
-        user.$avatar.value = nil
-
-        try await user.save(on: req.db)
-
-        return user.toDTO(fileStorage: req.fileStorage)
     }
 }

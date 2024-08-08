@@ -32,3 +32,9 @@ final class Avatar: Model, @unchecked Sendable {
         self.$user.id = userID
     }
 }
+
+extension Avatar {
+    func toURL(on req: Request) -> String {
+        req.application.fileStorage.getFileURL(for: self.key)
+    }
+}

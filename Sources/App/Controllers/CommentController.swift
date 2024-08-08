@@ -32,7 +32,7 @@ struct CommentController: RouteCollection {
     func create(req: Request) async throws -> CommentDTO {
         let user = try req.auth.require(User.self)
 
-        let createComment = try req.content.decode(CreateCommentRequest.self)
+        let createComment = try req.content.decode(CommentRequest.self)
         guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
             throw Abort(.badRequest)
         }
@@ -53,7 +53,7 @@ struct CommentController: RouteCollection {
     func update(req: Request) async throws -> CommentDTO {
         let user = try req.auth.require(User.self)
 
-        let updatedComment = try req.content.decode(CreateCommentRequest.self)
+        let updatedComment = try req.content.decode(CommentRequest.self)
         guard let comment = try await Comment.find(req.parameters.get("commentID"), on: req.db) else {
             throw Abort(.notFound)
         }

@@ -4,7 +4,7 @@ struct ArticleDTO: Content {
     var id: UUID?
     var title: String?
     var content: String?
-    var userId: UUID?
+    var userId: User.IDValue?
 
     func toModel(with id: User.IDValue) -> Article {
         let model = Article()

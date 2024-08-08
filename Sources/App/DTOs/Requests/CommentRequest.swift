@@ -1,5 +1,5 @@
 import Vapor
 
-struct CreateCommentRequest: Content {
+struct CommentRequest: Content {
     let content: String
 }

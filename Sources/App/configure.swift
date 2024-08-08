@@ -12,6 +12,10 @@ public func configure(_ app: Application) async throws {
     // uncomment to serve files from /Public folder
     // app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
 
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+    ContentConfiguration.global.use(encoder: encoder, for: .json)
+
     let awsClient = AWSClient(
         credentialProvider: .static(
             accessKeyId: Environment.get("AWS_ACCESS_KEY_ID") ?? "",
@@ -19,12 +23,13 @@ public func configure(_ app: Application) async throws {
         )
     )
 
-    app.awsClient = awsClient
-    app.fileStorage = S3Service(client: app.awsClient, config: .default)
+    let s3Configuration = S3Configuration(
+        bucketName: Environment.get("AWS_S3_BUCKET_NAME") ?? "",
+        region: .init(rawValue: Environment.get("AWS_REGION") ?? "")
+    )
 
-    let encoder = JSONEncoder()
-    encoder.outputFormatting = [.sortedKeys, .prettyPrinted]
-    ContentConfiguration.global.use(encoder: encoder, for: .json)
+    app.awsClient = awsClient
+    app.fileStorage = S3Service(client: app.awsClient, config: s3Configuration)
 
     try app.databases.use(DatabaseConfigurationFactory.postgres(
         configuration: .init(

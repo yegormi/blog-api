@@ -16,7 +16,7 @@ final class Comment: Model, @unchecked Sendable {
     @Parent(key: "user_id")
     var user: User
 
-    @Timestamp(key: "created_at", on: .create, format: .iso8601)
+    @Timestamp(key: "created_at", on: .create, format: .iso8601(withMilliseconds: true))
     var createdAt: Date?
 
     init() {}
@@ -30,7 +30,7 @@ final class Comment: Model, @unchecked Sendable {
 }
 
 extension Comment {
-    func toDTO() -> CommentDTO {
-        .init(id: self.id, content: self.content)
+    func toDTO(on req: Request) -> CommentDTO {
+        .init(id: self.id, user: self.user.toDTO(on: req), content: self.content, createdAt: self.$createdAt.timestamp)
     }
 }

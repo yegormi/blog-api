@@ -17,10 +17,10 @@ final class Avatar: Model, @unchecked Sendable {
     @Parent(key: "user_id")
     var user: User
 
-    @Timestamp(key: "created_at", on: .create, format: .iso8601)
+    @Timestamp(key: "created_at", on: .create, format: .iso8601(withMilliseconds: true))
     var createdAt: Date?
 
-    @Timestamp(key: "updated_at", on: .update, format: .iso8601)
+    @Timestamp(key: "updated_at", on: .update, format: .iso8601(withMilliseconds: true))
     var updatedAt: Date?
 
     init() {}

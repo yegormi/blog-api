@@ -2,7 +2,9 @@ import Vapor
 
 struct CommentDTO: Content {
     let id: UUID?
+    let user: UserDTO
     let content: String
+    let createdAt: String?
 
     func toModel() -> Comment {
         let model = Comment()

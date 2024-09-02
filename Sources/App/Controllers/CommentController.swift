@@ -25,7 +25,7 @@ struct CommentController: RouteCollection {
             .filter(\.$article.$id == articleID)
             .with(\.$user)
             .all()
-            .map { $0.toDTO() }
+            .map { $0.toDTO(on: req) }
     }
 
     @Sendable
@@ -38,15 +38,29 @@ struct CommentController: RouteCollection {
         }
         let comment = try Comment(content: createComment.content, articleID: articleID, userID: user.requireID())
         try await comment.save(on: req.db)
-        return comment.toDTO()
+
+        guard let savedComment = try await Comment.query(on: req.db)
+            .filter(\.$id == comment.id!)
+            .with(\.$user)
+            .first() else {
+            throw Abort(.internalServerError)
+        }
+
+        return savedComment.toDTO(on: req)
     }
 
     @Sendable
     func show(req: Request) async throws -> CommentDTO {
-        guard let comment = try await Comment.find(req.parameters.get("commentID"), on: req.db) else {
+        guard let commentId = req.parameters.get("commentID", as: UUID.self) else {
             throw Abort(.notFound)
         }
-        return comment.toDTO()
+        guard let comment = try await Comment.query(on: req.db)
+            .filter(\.$id == commentId)
+            .with(\.$user)
+            .first() else {
+            throw Abort(.notFound)
+        }
+        return comment.toDTO(on: req)
     }
 
     @Sendable
@@ -54,7 +68,13 @@ struct CommentController: RouteCollection {
         let user = try req.auth.require(User.self)
 
         let updatedComment = try req.content.decode(CommentRequest.self)
-        guard let comment = try await Comment.find(req.parameters.get("commentID"), on: req.db) else {
+        guard let commentId = req.parameters.get("commentID", as: UUID.self) else {
+            throw Abort(.notFound)
+        }
+        guard let comment = try await Comment.query(on: req.db)
+            .filter(\.$id == commentId)
+            .with(\.$user)
+            .first() else {
             throw Abort(.notFound)
         }
         guard try comment.$user.id == user.requireID() else {
@@ -62,7 +82,7 @@ struct CommentController: RouteCollection {
         }
         comment.content = updatedComment.content
         try await comment.save(on: req.db)
-        return comment.toDTO()
+        return comment.toDTO(on: req)
     }
 
     @Sendable

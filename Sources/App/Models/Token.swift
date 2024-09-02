@@ -30,7 +30,7 @@ final class Token: Model, @unchecked Sendable {
     @Parent(key: "user_id")
     var user: User
 
-    @Timestamp(key: "expires_at", on: .none, format: .iso8601)
+    @Timestamp(key: "expires_at", on: .none, format: .iso8601(withMilliseconds: true))
     var expiresAt: Date?
 
     init() {}

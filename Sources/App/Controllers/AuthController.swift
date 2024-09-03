@@ -79,7 +79,7 @@ struct AuthController: RouteCollection {
         try await Token.query(on: req.db)
             .filter(\.$user.$id == user.requireID())
             .delete()
-        return .ok
+        return .noContent
     }
 
     @Sendable
@@ -93,7 +93,7 @@ struct AuthController: RouteCollection {
             try await user.delete(on: transaction)
         }
 
-        return .ok
+        return .noContent
     }
 
     @Sendable

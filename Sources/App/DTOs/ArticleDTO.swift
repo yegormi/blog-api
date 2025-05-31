@@ -5,6 +5,8 @@ struct ArticleDTO: Content {
     var title: String?
     var content: String?
     var userId: User.IDValue?
+    let createdAt: String?
+    let updatedAt: String?
 
     func toModel(with id: User.IDValue) -> Article {
         let model = Article()

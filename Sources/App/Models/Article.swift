@@ -41,7 +41,9 @@ extension Article {
             id: self.id,
             title: self.title,
             content: self.content,
-            userId: self.$user.id
+            userId: self.$user.id,
+            createdAt: self.$createdAt.timestamp,
+            updatedAt: self.$updatedAt.timestamp
         )
     }
 }

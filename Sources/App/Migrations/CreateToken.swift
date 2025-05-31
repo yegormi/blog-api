@@ -2,7 +2,7 @@ import Fluent
 
 struct CreateToken: AsyncMigration {
     func prepare(on database: Database) async throws {
-        try await database.schema("tokens")
+        try await database.schema(Token.schema)
             .id()
             .field("token", .string, .required)
             .field("user_id", .uuid, .required, .references("users", "id", onDelete: .cascade))
@@ -12,6 +12,6 @@ struct CreateToken: AsyncMigration {
     }
 
     func revert(on database: Database) async throws {
-        try await database.schema("tokens").delete()
+        try await database.schema(Token.schema).delete()
     }
 }

@@ -3,7 +3,7 @@ import JWT
 import Vapor
 
 struct AuthController: RouteCollection {
-    func boot(routes: RoutesBuilder) throws {
+    func boot(routes: any RoutesBuilder) throws {
         let authenticated = routes.grouped(JWTMiddleware())
 
         let auth = routes.grouped("auth")
@@ -66,7 +66,7 @@ struct AuthController: RouteCollection {
             throw Abort(.unauthorized, reason: "Invalid password")
         }
 
-        let token = try user.generateToken(using: req.application)
+        let token = try await user.generateToken(on: req)
         try await token.save(on: req.db)
 
         return token.toDTO(with: user.toDTO(on: req))

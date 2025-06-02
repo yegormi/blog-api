@@ -2,7 +2,7 @@ import Fluent
 import Vapor
 
 struct ArticleController: RouteCollection {
-    func boot(routes: RoutesBuilder) throws {
+    func boot(routes: any RoutesBuilder) throws {
         let articles = routes
             .grouped("articles")
             .grouped(JWTMiddleware())

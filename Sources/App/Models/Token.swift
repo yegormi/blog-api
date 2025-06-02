@@ -13,7 +13,7 @@ struct Payload: JWTPayload, Equatable {
     var expiration: ExpirationClaim
     var issuedAt: IssuedAtClaim
 
-    func verify(using _: JWTSigner) throws {
+    func verify(using _: some JWTAlgorithm) async throws {
         try self.expiration.verifyNotExpired()
     }
 }
@@ -50,8 +50,8 @@ extension Token {
 }
 
 extension Token: ModelTokenAuthenticatable {
-    static let valueKey = \Token.$token
-    static let userKey = \Token.$user
+    static var valueKey: KeyPath<Token, Field<String>> { \.$token }
+    static var userKey: KeyPath<Token, Parent<User>> { \.$user }
 
     var isValid: Bool {
         guard let expiresAt = self.expiresAt else { return false }

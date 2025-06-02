@@ -1,7 +1,7 @@
 import Fluent
 
 struct CreateAvatar: AsyncMigration {
-    func prepare(on database: Database) async throws {
+    func prepare(on database: any Database) async throws {
         try await database.schema(Avatar.schema)
             .id()
             .field("key", .string, .required)
@@ -13,7 +13,7 @@ struct CreateAvatar: AsyncMigration {
             .create()
     }
 
-    func revert(on database: Database) async throws {
+    func revert(on database: any Database) async throws {
         try await database.schema(Avatar.schema).delete()
     }
 }

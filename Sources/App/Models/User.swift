@@ -52,7 +52,7 @@ extension User {
 }
 
 extension User {
-    func generateToken(using app: Application) throws -> Token {
+    func generateToken(on req: Request) async throws -> Token {
         guard let id = self.id else { throw APIError.userNotFound }
 
         let expirationTime = Date().addingTimeInterval(1 * 60 * 60) // 1 hour
@@ -63,15 +63,15 @@ extension User {
             issuedAt: IssuedAtClaim(value: Date())
         )
 
-        let token = try app.jwt.signers.sign(payload)
+        let token = try await req.jwt.sign(payload)
 
         return Token(token: token, userID: id, expiresAt: expirationTime)
     }
 }
 
 extension User: ModelAuthenticatable {
-    static let usernameKey = \User.$username
-    static let passwordHashKey = \User.$passwordHash
+    static var usernameKey: KeyPath<User, Field<String>> { \.$username }
+    static var passwordHashKey: KeyPath<User, Field<String>> { \.$passwordHash }
 
     func verify(password: String) throws -> Bool {
         try Bcrypt.verify(password, created: self.passwordHash)

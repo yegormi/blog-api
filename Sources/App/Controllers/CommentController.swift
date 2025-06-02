@@ -2,7 +2,7 @@ import Fluent
 import Vapor
 
 struct CommentController: RouteCollection {
-    func boot(routes: RoutesBuilder) throws {
+    func boot(routes: any RoutesBuilder) throws {
         let comments = routes
             .grouped("articles", ":articleID", "comments")
             .grouped(JWTMiddleware())

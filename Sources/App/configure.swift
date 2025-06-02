@@ -51,7 +51,7 @@ public func configure(_ app: Application) async throws {
     guard let jwtSecret = Environment.get("JWT_SECRET") else {
         fatalError("JWT_SECRET environment variable is not set")
     }
-    app.jwt.signers.use(.hs256(key: jwtSecret))
+    await app.jwt.keys.add(hmac: .init(from: jwtSecret), digestAlgorithm: .sha256)
 
     app.views.use(.leaf)
 
@@ -84,7 +84,7 @@ public struct FileStorageKey: StorageKey {
 }
 
 extension Application {
-    var fileStorage: FileStorageService {
+    var fileStorage: any FileStorageService {
         get {
             guard let storage = storage[FileStorageKey.self] else {
                 fatalError("FileStorage not configured. Use app.fileStorage = ...")
@@ -98,7 +98,7 @@ extension Application {
 }
 
 extension Request {
-    var fileStorage: FileStorageService {
+    var fileStorage: any FileStorageService {
         self.application.fileStorage
     }
 }

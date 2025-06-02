@@ -21,7 +21,7 @@ struct AuthController: RouteCollection {
     }
 
     @Sendable
-    func register(req: Request) async throws -> UserDTO {
+    func register(req: Request) async throws -> TokenDTO {
         try RegisterRequest.validate(content: req)
         let request = try req.content.decode(RegisterRequest.self)
 
@@ -46,7 +46,11 @@ struct AuthController: RouteCollection {
             passwordHash: Bcrypt.hash(request.password)
         )
         try await user.save(on: req.db)
-        return user.toDTO(on: req)
+        
+        let token = try await user.generateToken(on: req)
+        try await token.save(on: req.db)
+        
+        return token.toDTO(with: user.toDTO(on: req))
     }
 
     @Sendable

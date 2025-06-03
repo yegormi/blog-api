@@ -6,11 +6,17 @@ import NIOSSL
 import SotoCore
 import SotoS3
 import Vapor
+@preconcurrency import SwiftOpenAPI
 
-// configures your application
 public func configure(_ app: Application) async throws {
-    // uncomment to serve files from /Public folder
-    // app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
+    app.middleware.use(
+        FileMiddleware(
+            publicDirectory: app.directory.publicDirectory,
+            defaultFile: "index.html"
+        )
+    )
+    
+    DateEncodingFormat.default = .dateTime
 
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys]

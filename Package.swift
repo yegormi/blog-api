@@ -21,6 +21,8 @@ let package = Package(
         .package(url: "https://github.com/vapor/jwt.git", from: "5.1.2"),
         // ☁️ Amazon S3 library used to upload and store images
         .package(url: "https://github.com/soto-project/soto", from: "7.7.0"),
+        // 🧊 OpenAPI generation for Vapor based projects
+        .package(url: "https://github.com/dankinsoid/VaporToOpenAPI.git", from: "4.8.3"),
     ],
     targets: [
         .executableTarget(
@@ -34,6 +36,7 @@ let package = Package(
                 .product(name: "NIOPosix", package: "swift-nio"),
                 .product(name: "JWT", package: "jwt"),
                 .product(name: "SotoS3", package: "soto"),
+                .product(name: "VaporToOpenAPI", package: "VaporToOpenAPI"),
             ],
             swiftSettings: swiftSettings
         ),

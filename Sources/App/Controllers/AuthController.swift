@@ -26,7 +26,7 @@ struct AuthController: RouteCollection {
                         operationId: "registerUser",
                         body: .type(RegisterRequest.self),
                         contentType: .application(.json),
-                        response: .type(TokenDTO.self),
+                        response: .type(APIResponse<TokenDTO>.self),
                         responseContentType: .application(.json)
                     )
                     .response(statusCode: .conflict, body: .type(APIErrorDTO.self), description: "User already exists")
@@ -38,7 +38,7 @@ struct AuthController: RouteCollection {
                         operationId: "loginUser",
                         body: .type(LoginRequest.self),
                         contentType: .application(.json),
-                        response: .type(TokenDTO.self),
+                        response: .type(APIResponse<TokenDTO>.self),
                         responseContentType: .application(.json)
                     )
                     .response(statusCode: .unauthorized, body: .type(APIErrorDTO.self), description: "Invalid credentials")
@@ -61,7 +61,7 @@ struct AuthController: RouteCollection {
                         summary: "Get user profile",
                         description: "Get the current user's profile information",
                         operationId: "getUserProfile",
-                        response: .type(UserDTO.self),
+                        response: .type(APIResponse<UserDTO>.self),
                         responseContentType: .application(.json),
                         auth: .blogAuth
                     )
@@ -93,7 +93,7 @@ struct AuthController: RouteCollection {
                         operationId: "uploadUserAvatar",
                         body: .type(FileUpload.self),
                         contentType: .multipart(.formData),
-                        response: .type(UserDTO.self),
+                        response: .type(APIResponse<UserDTO>.self),
                         responseContentType: .application(.json),
                         auth: .blogAuth
                     )
@@ -104,7 +104,7 @@ struct AuthController: RouteCollection {
                         summary: "Remove avatar",
                         description: "Remove the user's avatar image",
                         operationId: "removeUserAvatar",
-                        response: .type(UserDTO.self),
+                        response: .type(APIResponse<UserDTO>.self),
                         responseContentType: .application(.json),
                         auth: .blogAuth
                     )
@@ -113,7 +113,7 @@ struct AuthController: RouteCollection {
     }
 
     @Sendable
-    func registerUser(req: Request) async throws -> TokenDTO {
+    func registerUser(req: Request) async throws -> APIResponse<TokenDTO> {
         try RegisterRequest.validate(content: req)
         let request = try req.content.decode(RegisterRequest.self)
 
@@ -142,11 +142,14 @@ struct AuthController: RouteCollection {
         let token = try await user.generateToken(on: req)
         try await token.save(on: req.db)
 
-        return token.toDTO(with: user.toDTO(on: req))
+        return req.created(
+            token.toDTO(with: user.toDTO(on: req)),
+            message: "User registered successfully"
+        )
     }
 
     @Sendable
-    func loginUser(req: Request) async throws -> TokenDTO {
+    func loginUser(req: Request) async throws -> APIResponse<TokenDTO> {
         try LoginRequest.validate(content: req)
         let loginRequest = try req.content.decode(LoginRequest.self)
 
@@ -165,21 +168,27 @@ struct AuthController: RouteCollection {
         let token = try await user.generateToken(on: req)
         try await token.save(on: req.db)
 
-        return token.toDTO(with: user.toDTO(on: req))
+        return req.success(
+            token.toDTO(with: user.toDTO(on: req)),
+            message: "User logged in successfully"
+        )
     }
 
     @Sendable
-    func logoutUser(req: Request) async throws -> HTTPStatus {
+    func logoutUser(req: Request) async throws -> APIResponse<EmptyData> {
         let user = try req.auth.require(User.self)
         /// Invalidate all tokens for the user or the specific token used for the request
         try await Token.query(on: req.db)
             .filter(\.$user.$id == user.requireID())
             .delete()
-        return .noContent
+        
+        return req.noContent(
+            message: "User logged out successfully"
+        )
     }
 
     @Sendable
-    func deleteUserAccount(req: Request) async throws -> HTTPStatus {
+    func deleteUserAccount(req: Request) async throws -> APIResponse<EmptyData> {
         let user = try req.auth.require(User.self)
 
         try await req.db.transaction { transaction in
@@ -189,11 +198,13 @@ struct AuthController: RouteCollection {
             try await user.delete(on: transaction)
         }
 
-        return .noContent
+        return req.noContent(
+            message: "User account deleted successfully"
+        )
     }
 
     @Sendable
-    func getUserProfile(req: Request) async throws -> UserDTO {
+    func getUserProfile(req: Request) async throws -> APIResponse<UserDTO> {
         let user = try req.auth.require(User.self)
 
         guard let userDB = try await User.query(on: req.db)
@@ -204,11 +215,14 @@ struct AuthController: RouteCollection {
             throw APIError.userNotFound
         }
 
-        return userDB.toDTO(on: req)
+        return req.success(
+            userDB.toDTO(on: req),
+            message: "User profile retrieved successfully"
+        )
     }
 
     @Sendable
-    func uploadUserAvatar(req: Request) async throws -> UserDTO {
+    func uploadUserAvatar(req: Request) async throws -> APIResponse<UserDTO> {
         let user = try req.auth.require(User.self)
         let file = try req.content.decode(FileUpload.self).file
 
@@ -219,7 +233,7 @@ struct AuthController: RouteCollection {
         let fileName = "\(UUID().uuidString.lowercased()).\(fileExtension)"
         let key = "avatars/\(fileName)"
 
-        return try await req.db.transaction { transaction in
+        let userDTO = try await req.db.transaction { transaction in
             /// Delete old avatar if it exists
             if let existingAvatar = try await user.$avatar.get(on: transaction) {
                 try await req.fileStorage.deleteFile(key: existingAvatar.key)
@@ -243,13 +257,18 @@ struct AuthController: RouteCollection {
 
             return userDB.toDTO(on: req)
         }
+        
+        return req.success(
+            userDTO,
+            message: "Avatar uploaded successfully"
+        )
     }
 
     @Sendable
-    func removeUserAvatar(req: Request) async throws -> UserDTO {
+    func removeUserAvatar(req: Request) async throws -> APIResponse<UserDTO> {
         let user = try req.auth.require(User.self)
 
-        return try await req.db.transaction { transaction in
+        let userDTO = try await req.db.transaction { transaction in
             guard let avatar = try await user.$avatar.get(on: transaction) else {
                 throw APIError.avatarNotFound
             }
@@ -266,5 +285,10 @@ struct AuthController: RouteCollection {
 
             return userDB.toDTO(on: req)
         }
+        
+        return req.success(
+            userDTO,
+            message: "Avatar removed successfully"
+        )
     }
 }

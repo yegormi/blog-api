@@ -5,7 +5,7 @@ import Vapor
 import VaporToOpenAPI
 
 /// Custom error middleware that uses APIErrorDTO for consistent error responses.
-public final class APIErrorMiddleware: Middleware {
+public final class APIErrorMiddleware: AsyncMiddleware {
     /// Create a default `APIErrorMiddleware`. Logs errors to a `Logger` based on `Environment`
     /// and converts `Error` to `Response` using `APIErrorDTO`.
     ///
@@ -112,9 +112,11 @@ public final class APIErrorMiddleware: Middleware {
         self.closure = closure
     }
     
-    public func respond(to request: Request, chainingTo next: any Responder) -> EventLoopFuture<Response> {
-        next.respond(to: request).flatMapErrorThrowing { error in
-            self.closure(request, error)
+    public func respond(to request: Request, chainingTo next: any AsyncResponder) async throws -> Response {
+        do {
+            return try await next.respond(to: request)
+        } catch {
+            return self.closure(request, error)
         }
     }
 }

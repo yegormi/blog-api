@@ -23,7 +23,7 @@ struct ArticleController: RouteCollection {
                         description: "Retrieve all articles, optionally filtered by search query",
                         operationId: "getAllArticles",
                         query: ["q": .string],
-                        response: .type([ArticleDTO].self),
+                        response: .type(APIResponse<[ArticleDTO]>.self),
                         responseContentType: .application(.json),
                         links: [
                             Link("id", in: .response): Link.ArticleID.self
@@ -38,7 +38,7 @@ struct ArticleController: RouteCollection {
                         operationId: "createArticle",
                         body: .type(CreateArticleRequest.self),
                         contentType: .application(.json),
-                        response: .type(ArticleDTO.self),
+                        response: .type(APIResponse<ArticleDTO>.self),
                         responseContentType: .application(.json),
                         links: [
                             Link("id", in: .response): Link.ArticleID.self
@@ -55,7 +55,7 @@ struct ArticleController: RouteCollection {
                                 summary: "Get article by ID",
                                 description: "Retrieve a specific article by its ID",
                                 operationId: "getArticleById",
-                                response: .type(ArticleDTO.self),
+                                response: .type(APIResponse<ArticleDTO>.self),
                                 responseContentType: .application(.json),
                                 links: [
                                     Link("articleID", in: .path): Link.ArticleID.self
@@ -70,7 +70,7 @@ struct ArticleController: RouteCollection {
                                 operationId: "updateArticle",
                                 body: .type(UpdateArticleRequest.self),
                                 contentType: .application(.json),
-                                response: .type(ArticleDTO.self),
+                                response: .type(APIResponse<ArticleDTO>.self),
                                 responseContentType: .application(.json),
                                 links: [
                                     Link("articleID", in: .path): Link.ArticleID.self
@@ -95,10 +95,12 @@ struct ArticleController: RouteCollection {
     }
 
     @Sendable
-    func getAllArticles(req: Request) async throws -> [ArticleDTO] {
+    func getAllArticles(req: Request) async throws -> APIResponse<[ArticleDTO]> {
+        let articles: [ArticleDTO]
+        
         if let query = req.query[String.self, at: "q"] {
             let queryNormalized = query.lowercased()
-            return try await Article.query(on: req.db)
+            articles = try await Article.query(on: req.db)
                 .group(.or) { group in
                     group.filter(\.$title ~~ queryNormalized)
                     group.filter(\.$content ~~ queryNormalized)
@@ -106,32 +108,45 @@ struct ArticleController: RouteCollection {
                 .all()
                 .map { $0.toDTO() }
         } else {
-            return try await Article.query(on: req.db)
+            articles = try await Article.query(on: req.db)
                 .all()
                 .map { $0.toDTO() }
         }
+        
+        return req.success(
+            articles,
+            message: "Articles retrieved successfully"
+        )
     }
 
     @Sendable
-    func createArticle(req: Request) async throws -> ArticleDTO {
+    func createArticle(req: Request) async throws -> APIResponse<ArticleDTO> {
         try CreateArticleRequest.validate(content: req)
         let user = try req.auth.require(User.self)
 
         let article = try req.content.decode(CreateArticleRequest.self).toModel(with: user.requireID())
         try await article.save(on: req.db)
-        return article.toDTO()
+        
+        return req.created(
+            article.toDTO(),
+            message: "Article created successfully"
+        )
     }
 
     @Sendable
-    func getArticleById(req: Request) async throws -> ArticleDTO {
+    func getArticleById(req: Request) async throws -> APIResponse<ArticleDTO> {
         guard let article = try await Article.find(req.parameters.get("articleID"), on: req.db) else {
             throw APIError.articleNotFound
         }
-        return article.toDTO()
+        
+        return req.success(
+            article.toDTO(),
+            message: "Article retrieved successfully"
+        )
     }
 
     @Sendable
-    func updateArticle(req: Request) async throws -> ArticleDTO {
+    func updateArticle(req: Request) async throws -> APIResponse<ArticleDTO> {
         let user = try req.auth.require(User.self)
 
         let updatedArticle = try req.content.decode(UpdateArticleRequest.self).toModel(with: user.requireID())
@@ -144,15 +159,22 @@ struct ArticleController: RouteCollection {
         article.content = updatedArticle.content
 
         try await article.save(on: req.db)
-        return article.toDTO()
+        
+        return req.success(
+            article.toDTO(),
+            message: "Article updated successfully"
+        )
     }
 
     @Sendable
-    func deleteArticle(req: Request) async throws -> HTTPStatus {
+    func deleteArticle(req: Request) async throws -> APIResponse<EmptyData> {
         guard let article = try await Article.find(req.parameters.get("articleID"), on: req.db) else {
             throw APIError.articleNotFound
         }
         try await article.delete(on: req.db)
-        return .noContent
+        
+        return req.noContent(
+            message: "Article deleted successfully"
+        )
     }
 }

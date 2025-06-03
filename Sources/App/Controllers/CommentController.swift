@@ -24,7 +24,7 @@ struct CommentController: RouteCollection {
                         summary: "Get article comments",
                         description: "Retrieve all comments for a specific article",
                         operationId: "getArticleComments",
-                        response: .type([CommentDTO].self),
+                        response: .type(APIResponse<[CommentDTO]>.self),
                         responseContentType: .application(.json),
                         links: [
                             Link("articleID", in: .path): Link.ArticleID.self,
@@ -41,7 +41,7 @@ struct CommentController: RouteCollection {
                         operationId: "createComment",
                         body: .type(CommentRequest.self),
                         contentType: .application(.json),
-                        response: .type(CommentDTO.self),
+                        response: .type(APIResponse<CommentDTO>.self),
                         responseContentType: .application(.json),
                         links: [
                             Link("articleID", in: .path): Link.ArticleID.self,
@@ -59,7 +59,7 @@ struct CommentController: RouteCollection {
                                 summary: "Get comment by ID",
                                 description: "Retrieve a specific comment by its ID",
                                 operationId: "getCommentById",
-                                response: .type(CommentDTO.self),
+                                response: .type(APIResponse<CommentDTO>.self),
                                 responseContentType: .application(.json),
                                 links: [
                                     Link("articleID", in: .path): Link.ArticleID.self,
@@ -75,7 +75,7 @@ struct CommentController: RouteCollection {
                                 operationId: "updateComment",
                                 body: .type(CommentRequest.self),
                                 contentType: .application(.json),
-                                response: .type(CommentDTO.self),
+                                response: .type(APIResponse<CommentDTO>.self),
                                 responseContentType: .application(.json),
                                 links: [
                                     Link("articleID", in: .path): Link.ArticleID.self,
@@ -104,19 +104,24 @@ struct CommentController: RouteCollection {
     }
 
     @Sendable
-    func getArticleComments(req: Request) async throws -> [CommentDTO] {
+    func getArticleComments(req: Request) async throws -> APIResponse<[CommentDTO]> {
         guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
             throw APIError.invalidParameter
         }
-        return try await Comment.query(on: req.db)
+        let comments = try await Comment.query(on: req.db)
             .filter(\.$article.$id == articleID)
             .with(\.$user)
             .all()
             .map { $0.toDTO(on: req) }
+        
+        return req.success(
+            comments,
+            message: "Article comments retrieved successfully"
+        )
     }
 
     @Sendable
-    func createComment(req: Request) async throws -> CommentDTO {
+    func createComment(req: Request) async throws -> APIResponse<CommentDTO> {
         let user = try req.auth.require(User.self)
 
         let createComment = try req.content.decode(CommentRequest.self)
@@ -133,11 +138,14 @@ struct CommentController: RouteCollection {
             throw APIError.databaseError
         }
 
-        return savedComment.toDTO(on: req)
+        return req.created(
+            savedComment.toDTO(on: req),
+            message: "Comment created successfully"
+        )
     }
 
     @Sendable
-    func getCommentById(req: Request) async throws -> CommentDTO {
+    func getCommentById(req: Request) async throws -> APIResponse<CommentDTO> {
         guard let commentId = req.parameters.get("commentID", as: UUID.self) else {
             throw APIError.invalidParameter
         }
@@ -147,11 +155,15 @@ struct CommentController: RouteCollection {
             .first() else {
             throw APIError.commentNotFound
         }
-        return comment.toDTO(on: req)
+        
+        return req.success(
+            comment.toDTO(on: req),
+            message: "Comment retrieved successfully"
+        )
     }
 
     @Sendable
-    func updateComment(req: Request) async throws -> CommentDTO {
+    func updateComment(req: Request) async throws -> APIResponse<CommentDTO> {
         let user = try req.auth.require(User.self)
 
         let updatedComment = try req.content.decode(CommentRequest.self)
@@ -169,11 +181,15 @@ struct CommentController: RouteCollection {
         }
         comment.content = updatedComment.content
         try await comment.save(on: req.db)
-        return comment.toDTO(on: req)
+        
+        return req.success(
+            comment.toDTO(on: req),
+            message: "Comment updated successfully"
+        )
     }
 
     @Sendable
-    func deleteComment(req: Request) async throws -> HTTPStatus {
+    func deleteComment(req: Request) async throws -> APIResponse<EmptyData> {
         let user = try req.auth.require(User.self)
         guard let comment = try await Comment.find(req.parameters.get("commentID"), on: req.db) else {
             throw APIError.commentNotFound
@@ -182,6 +198,9 @@ struct CommentController: RouteCollection {
             throw APIError.resourceOwnershipRequired
         }
         try await comment.delete(on: req.db)
-        return .noContent
+        
+        return req.noContent(
+            message: "Comment deleted successfully"
+        )
     }
 }

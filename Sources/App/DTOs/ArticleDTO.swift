@@ -1,11 +1,21 @@
 import Vapor
+import SwiftOpenAPI
+import VaporToOpenAPI
 
-struct ArticleDTO: Content {
+@OpenAPIDescriptable
+/// Article data transfer object
+struct ArticleDTO: Content, WithExample {
+    /// Unique identifier for the article
     var id: UUID?
+    /// Article title
     var title: String?
+    /// Article content
     var content: String?
+    /// ID of the user who created the article
     var userId: User.IDValue?
+    /// When the article was created
     let createdAt: String?
+    /// When the article was last updated
     let updatedAt: String?
 
     func toModel(with id: User.IDValue) -> Article {
@@ -22,4 +32,13 @@ struct ArticleDTO: Content {
         }
         return model
     }
+    
+    static let example = ArticleDTO(
+        id: UUID(),
+        title: "Sample Article",
+        content: "This is a sample article content for OpenAPI documentation.",
+        userId: UUID(),
+        createdAt: "2023-12-01T10:00:00Z",
+        updatedAt: "2023-12-01T12:00:00Z"
+    )
 }

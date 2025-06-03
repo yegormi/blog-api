@@ -1,13 +1,33 @@
 import Vapor
+import SwiftOpenAPI
+import VaporToOpenAPI
 
-struct ArticleRequest: Content {
+@OpenAPIDescriptable
+/// Request payload for creating an article
+struct ArticleRequest: Content, WithExample {
+    /// Article title
     let title: String
+    /// Article content
     let content: String
+    
+    static let example = ArticleRequest(
+        title: "My First Blog Post",
+        content: "This is the content of my first blog post."
+    )
 }
 
-struct UpdateArticleRequest: Content {
+@OpenAPIDescriptable
+/// Request payload for updating an article
+struct UpdateArticleRequest: Content, WithExample {
+    /// Updated article title (optional)
     let title: String?
+    /// Updated article content (optional)
     let content: String?
+    
+    static let example = UpdateArticleRequest(
+        title: "Updated Blog Post Title",
+        content: "This is the updated content of my blog post."
+    )
 }
 
 extension ArticleRequest: Validatable {

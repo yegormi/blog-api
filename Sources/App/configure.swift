@@ -64,3 +64,47 @@ public func configure(_ app: Application) async throws {
     // register routes
     try routes(app)
 }
+
+public struct BucketStorageKey: StorageKey {
+    public typealias Value = AWSClient
+}
+
+extension Application {
+    var awsClient: AWSClient {
+        get {
+            guard let client = self.storage[BucketStorageKey.self] else {
+                fatalError("AWSClient not setup. Use app.awsClient = ...")
+            }
+            return client
+        }
+        set {
+            self.storage.set(BucketStorageKey.self, to: newValue) {
+                try $0.syncShutdown()
+            }
+        }
+    }
+}
+
+public struct FileStorageKey: StorageKey {
+    public typealias Value = FileStorageService
+}
+
+extension Application {
+    var fileStorage: any FileStorageService {
+        get {
+            guard let storage = storage[FileStorageKey.self] else {
+                fatalError("FileStorage not configured. Use app.fileStorage = ...")
+            }
+            return storage
+        }
+        set {
+            storage[FileStorageKey.self] = newValue
+        }
+    }
+}
+
+extension Request {
+    var fileStorage: any FileStorageService {
+        self.application.fileStorage
+    }
+}

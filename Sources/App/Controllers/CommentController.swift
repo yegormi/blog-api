@@ -29,6 +29,7 @@ struct CommentController: RouteCollection {
                         ],
                         auth: .blogAuth
                     )
+                    .response(statusCode: 200, description: "Comments retrieved successfully")
                     .response(statusCode: 400, description: "Invalid article ID")
                     .response(statusCode: 401, description: "Unauthorized")
 
@@ -47,8 +48,10 @@ struct CommentController: RouteCollection {
                         ],
                         auth: .blogAuth
                     )
+                    .response(statusCode: 201, description: "Comment created successfully")
                     .response(statusCode: 400, description: "Invalid input")
                     .response(statusCode: 401, description: "Unauthorized")
+                    .response(statusCode: 404, description: "Article not found")
 
                 comments.group(":commentID") { comment in
                     comment.get(use: self.getCommentById)
@@ -64,6 +67,7 @@ struct CommentController: RouteCollection {
                             ],
                             auth: .blogAuth
                         )
+                        .response(statusCode: 200, description: "Comment retrieved successfully")
                         .response(statusCode: 401, description: "Unauthorized")
                         .response(statusCode: 404, description: "Comment not found")
 
@@ -82,6 +86,7 @@ struct CommentController: RouteCollection {
                             ],
                             auth: .blogAuth
                         )
+                        .response(statusCode: 200, description: "Comment updated successfully")
                         .response(statusCode: 400, description: "Invalid input")
                         .response(statusCode: 401, description: "Unauthorized")
                         .response(statusCode: 403, description: "Forbidden - not comment author")

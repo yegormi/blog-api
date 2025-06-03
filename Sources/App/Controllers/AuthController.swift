@@ -27,6 +27,7 @@ struct AuthController: RouteCollection {
                     response: .type(TokenDTO.self),
                     responseContentType: .application(.json)
                 )
+                .response(statusCode: 201, description: "User created successfully")
                 .response(statusCode: 400, description: "Invalid input")
                 .response(statusCode: 409, description: "User already exists")
 
@@ -40,6 +41,7 @@ struct AuthController: RouteCollection {
                     response: .type(TokenDTO.self),
                     responseContentType: .application(.json)
                 )
+                .response(statusCode: 200, description: "Login successful")
                 .response(statusCode: 400, description: "Invalid input")
                 .response(statusCode: 401, description: "Invalid credentials")
         }
@@ -63,6 +65,7 @@ struct AuthController: RouteCollection {
                     responseContentType: .application(.json),
                     auth: .blogAuth
                 )
+                .response(statusCode: 200, description: "User profile retrieved successfully")
                 .response(statusCode: 401, description: "Unauthorized")
                 .response(statusCode: 404, description: "User not found")
 
@@ -98,6 +101,7 @@ struct AuthController: RouteCollection {
                     responseContentType: .application(.json),
                     auth: .blogAuth
                 )
+                .response(statusCode: 200, description: "Avatar uploaded successfully")
                 .response(statusCode: 400, description: "Invalid file")
                 .response(statusCode: 401, description: "Unauthorized")
 
@@ -110,6 +114,7 @@ struct AuthController: RouteCollection {
                     responseContentType: .application(.json),
                     auth: .blogAuth
                 )
+                .response(statusCode: 200, description: "Avatar removed successfully")
                 .response(statusCode: 401, description: "Unauthorized")
                 .response(statusCode: 404, description: "Avatar not found")
         }

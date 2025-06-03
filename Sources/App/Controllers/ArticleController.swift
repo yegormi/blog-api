@@ -28,6 +28,8 @@ struct ArticleController: RouteCollection {
                         ],
                         auth: .blogAuth
                     )
+                    .response(statusCode: 200, description: "Articles retrieved successfully")
+                    .response(statusCode: 401, description: "Unauthorized")
 
                 articles.post(use: self.createArticle)
                     .openAPI(
@@ -43,6 +45,7 @@ struct ArticleController: RouteCollection {
                         ],
                         auth: .blogAuth
                     )
+                    .response(statusCode: 201, description: "Article created successfully")
                     .response(statusCode: 400, description: "Invalid input")
                     .response(statusCode: 401, description: "Unauthorized")
 
@@ -59,6 +62,8 @@ struct ArticleController: RouteCollection {
                             ],
                             auth: .blogAuth
                         )
+                        .response(statusCode: 200, description: "Article retrieved successfully")
+                        .response(statusCode: 401, description: "Unauthorized")
                         .response(statusCode: 404, description: "Article not found")
 
                     article.put(use: self.updateArticle)
@@ -75,6 +80,7 @@ struct ArticleController: RouteCollection {
                             ],
                             auth: .blogAuth
                         )
+                        .response(statusCode: 200, description: "Article updated successfully")
                         .response(statusCode: 400, description: "Invalid input")
                         .response(statusCode: 401, description: "Unauthorized")
                         .response(statusCode: 404, description: "Article not found")

@@ -42,8 +42,6 @@ struct APIResponse<T: Codable & Sendable>: Content {
 struct ResponseMeta: Codable, Sendable {
     /// Pagination information
     let pagination: PaginationMeta?
-    /// Total count of items (for list responses)
-    let totalCount: Int?
     /// Processing time in milliseconds
     let processingTime: Double?
     /// API version
@@ -51,12 +49,10 @@ struct ResponseMeta: Codable, Sendable {
 
     init(
         pagination: PaginationMeta? = nil,
-        totalCount: Int? = nil,
         processingTime: Double? = nil,
         version: String? = nil
     ) {
         self.pagination = pagination
-        self.totalCount = totalCount
         self.processingTime = processingTime
         self.version = version
     }
@@ -169,7 +165,6 @@ extension ResponseMeta: WithExample {
     static var example: ResponseMeta {
         ResponseMeta(
             pagination: PaginationMeta.example,
-            totalCount: 100,
             processingTime: 45.2,
             version: "1.0.0"
         )
@@ -220,7 +215,6 @@ extension APIResponse where T: Collection, T.Element: Codable & Sendable {
 
         let meta = ResponseMeta(
             pagination: pagination,
-            totalCount: totalItems,
             processingTime: processingTime
         )
 

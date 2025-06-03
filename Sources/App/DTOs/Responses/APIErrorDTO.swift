@@ -3,7 +3,7 @@ import Vapor
 import VaporToOpenAPI
 
 /// API Error data transfer object
-@OpenAPIDescriptable()
+@OpenAPIDescriptable
 struct APIErrorDTO: Error, WithExample {
     /// HTTP status code of the error
     let status: HTTPStatus

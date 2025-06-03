@@ -10,8 +10,6 @@ func routes(_ app: Application) throws {
 
     app.get("avatar") { req async throws in
         try await req.view.render("avatar")
-    app.get("avatar") { req async throws in
-        try await req.view.render("avatar")
     }
     .excludeFromOpenAPI()
 

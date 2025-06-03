@@ -1,27 +1,124 @@
 import Fluent
 import JWT
 import Vapor
+import VaporToOpenAPI
 
 struct AuthController: RouteCollection {
     func boot(routes: any RoutesBuilder) throws {
         let authenticated = routes.grouped(JWTMiddleware())
 
-        let auth = routes.grouped("auth")
-        auth.post("register", use: self.register)
-        auth.post("login", use: self.login)
+        routes
+            .groupedOpenAPIResponse(statusCode: .badRequest, description: "Invalid input")
+            .group(
+                tags: TagObject(
+                    name: "auth",
+                    description: "User authentication and registration",
+                    externalDocs: ExternalDocumentationObject(
+                        description: "Find out more about authentication",
+                        url: URL(string: "https://blog-api.com/docs/auth")!
+                    )
+                )
+            ) { auth in
+                auth.post("register", use: self.registerUser)
+                    .openAPI(
+                        summary: "Register new user",
+                        description: "Create a new user account",
+                        operationId: "registerUser",
+                        body: .type(RegisterRequest.self),
+                        contentType: .application(.json),
+                        response: .type(TokenDTO.self),
+                        responseContentType: .application(.json)
+                    )
+                    .response(statusCode: .created, description: "User created successfully")
+                    .response(statusCode: .conflict, description: "User already exists")
+                
+                auth.post("login", use: self.loginUser)
+                    .openAPI(
+                        summary: "Login user",
+                        description: "Authenticate user and return token",
+                        operationId: "loginUser",
+                        body: .type(LoginRequest.self),
+                        contentType: .application(.json),
+                        response: .type(TokenDTO.self),
+                        responseContentType: .application(.json)
+                    )
+                    .response(statusCode: .ok, description: "Login successful")
+                    .response(statusCode: .unauthorized, description: "Invalid credentials")
+            }
 
-        let me = authenticated.grouped("me")
-        me.get(use: self.getProfile)
-        me.post("logout", use: self.logout)
-        me.delete(use: self.deleteAccount)
-
-        let avatar = me.grouped("avatar")
-        avatar.on(.POST, "upload", body: .collect(maxSize: "10mb"), use: self.uploadAvatar)
-        avatar.on(.DELETE, "remove", use: self.removeAvatar)
+        authenticated
+            .groupedOpenAPIResponse(statusCode: .unauthorized, description: "Unauthorized")
+            .group(
+                tags: TagObject(
+                    name: "me",
+                    description: "User profile management",
+                    externalDocs: ExternalDocumentationObject(
+                        description: "Find out more about user profiles",
+                        url: URL(string: "https://your-blog-api.com/docs/profile")!
+                    )
+                )
+            ) { me in
+                me.get(use: self.getUserProfile)
+                    .openAPI(
+                        summary: "Get user profile",
+                        description: "Get the current user's profile information",
+                        operationId: "getUserProfile",
+                        response: .type(UserDTO.self),
+                        responseContentType: .application(.json),
+                        auth: .blogAuth
+                    )
+                    .response(statusCode: .ok, description: "User profile retrieved successfully")
+                    .response(statusCode: .notFound, description: "User not found")
+                
+                me.post("logout", use: self.logoutUser)
+                    .openAPI(
+                        summary: "Logout user",
+                        description: "Logout user and invalidate tokens",
+                        operationId: "logoutUser",
+                        auth: .blogAuth
+                    )
+                    .response(statusCode: .noContent, description: "Successfully logged out")
+                
+                me.delete(use: self.deleteUserAccount)
+                    .openAPI(
+                        summary: "Delete user account",
+                        description: "Delete the current user's account",
+                        operationId: "deleteUserAccount",
+                        auth: .blogAuth
+                    )
+                    .response(statusCode: .noContent, description: "Account deleted successfully")
+                
+                let avatar = me.grouped("avatar")
+                avatar.on(.POST, "upload", body: .collect(maxSize: "10mb"), use: self.uploadUserAvatar)
+                    .openAPI(
+                        summary: "Upload avatar",
+                        description: "Upload an avatar image for the user",
+                        operationId: "uploadUserAvatar",
+                        body: .type(FileUpload.self),
+                        contentType: .multipart(.formData),
+                        response: .type(UserDTO.self),
+                        responseContentType: .application(.json),
+                        auth: .blogAuth
+                    )
+                    .response(statusCode: .ok, description: "Avatar uploaded successfully")
+                    .response(statusCode: .badRequest, description: "Invalid file")
+                
+                avatar.on(.DELETE, "remove", use: self.removeUserAvatar)
+                    .openAPI(
+                        summary: "Remove avatar",
+                        description: "Remove the user's avatar image",
+                        operationId: "removeUserAvatar",
+                        response: .type(UserDTO.self),
+                        responseContentType: .application(.json),
+                        auth: .blogAuth
+                    )
+                    .response(statusCode: .ok, description: "Avatar removed successfully")
+                    .response(statusCode: .notFound, description: "Avatar not found")
+            }
     }
 
     @Sendable
-    func register(req: Request) async throws -> TokenDTO {
+    func registerUser(req: Request) async throws -> TokenDTO {
         try RegisterRequest.validate(content: req)
         let request = try req.content.decode(RegisterRequest.self)
 
@@ -46,15 +143,15 @@ struct AuthController: RouteCollection {
             passwordHash: Bcrypt.hash(request.password)
         )
         try await user.save(on: req.db)
-        
+
         let token = try await user.generateToken(on: req)
         try await token.save(on: req.db)
-        
+
         return token.toDTO(with: user.toDTO(on: req))
     }
 
     @Sendable
-    func login(req: Request) async throws -> TokenDTO {
+    func loginUser(req: Request) async throws -> TokenDTO {
         try LoginRequest.validate(content: req)
         let loginRequest = try req.content.decode(LoginRequest.self)
 
@@ -77,7 +174,7 @@ struct AuthController: RouteCollection {
     }
 
     @Sendable
-    func logout(req: Request) async throws -> HTTPStatus {
+    func logoutUser(req: Request) async throws -> HTTPStatus {
         let user = try req.auth.require(User.self)
         /// Invalidate all tokens for the user or the specific token used for the request
         try await Token.query(on: req.db)
@@ -87,7 +184,7 @@ struct AuthController: RouteCollection {
     }
 
     @Sendable
-    func deleteAccount(req: Request) async throws -> HTTPStatus {
+    func deleteUserAccount(req: Request) async throws -> HTTPStatus {
         let user = try req.auth.require(User.self)
 
         try await req.db.transaction { transaction in
@@ -101,7 +198,7 @@ struct AuthController: RouteCollection {
     }
 
     @Sendable
-    func getProfile(req: Request) async throws -> UserDTO {
+    func getUserProfile(req: Request) async throws -> UserDTO {
         let user = try req.auth.require(User.self)
 
         guard let userDB = try await User.query(on: req.db)
@@ -116,7 +213,7 @@ struct AuthController: RouteCollection {
     }
 
     @Sendable
-    func uploadAvatar(req: Request) async throws -> UserDTO {
+    func uploadUserAvatar(req: Request) async throws -> UserDTO {
         let user = try req.auth.require(User.self)
         let file = try req.content.decode(FileUpload.self).file
 
@@ -154,7 +251,7 @@ struct AuthController: RouteCollection {
     }
 
     @Sendable
-    func removeAvatar(req: Request) async throws -> UserDTO {
+    func removeUserAvatar(req: Request) async throws -> UserDTO {
         let user = try req.auth.require(User.self)
 
         return try await req.db.transaction { transaction in

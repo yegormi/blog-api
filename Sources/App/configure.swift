@@ -5,12 +5,18 @@ import Leaf
 import NIOSSL
 import SotoCore
 import SotoS3
+@preconcurrency import SwiftOpenAPI
 import Vapor
 
-// configures your application
 public func configure(_ app: Application) async throws {
-    // uncomment to serve files from /Public folder
-    // app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
+    app.middleware.use(
+        FileMiddleware(
+            publicDirectory: app.directory.publicDirectory,
+            defaultFile: "index.html"
+        )
+    )
+
+    DateEncodingFormat.default = .dateTime
 
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -49,7 +55,7 @@ public func configure(_ app: Application) async throws {
     app.migrations.add(CreateComment())
 
     guard let jwtSecret = Environment.get("JWT_SECRET") else {
-        fatalError("JWT_SECRET environment variable is not set")
+        preconditionFailure("JWT_SECRET environment variable is not set")
     }
     await app.jwt.keys.add(hmac: .init(from: jwtSecret), digestAlgorithm: .sha256)
 
@@ -57,48 +63,4 @@ public func configure(_ app: Application) async throws {
 
     // register routes
     try routes(app)
-}
-
-public struct BucketStorageKey: StorageKey {
-    public typealias Value = AWSClient
-}
-
-extension Application {
-    var awsClient: AWSClient {
-        get {
-            guard let client = self.storage[BucketStorageKey.self] else {
-                fatalError("AWSClient not setup. Use app.awsClient = ...")
-            }
-            return client
-        }
-        set {
-            self.storage.set(BucketStorageKey.self, to: newValue) {
-                try $0.syncShutdown()
-            }
-        }
-    }
-}
-
-public struct FileStorageKey: StorageKey {
-    public typealias Value = FileStorageService
-}
-
-extension Application {
-    var fileStorage: any FileStorageService {
-        get {
-            guard let storage = storage[FileStorageKey.self] else {
-                fatalError("FileStorage not configured. Use app.fileStorage = ...")
-            }
-            return storage
-        }
-        set {
-            storage[FileStorageKey.self] = newValue
-        }
-    }
-}
-
-extension Request {
-    var fileStorage: any FileStorageService {
-        self.application.fileStorage
-    }
 }

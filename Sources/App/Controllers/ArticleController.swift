@@ -1,23 +1,105 @@
 import Fluent
 import Vapor
+import VaporToOpenAPI
 
 struct ArticleController: RouteCollection {
     func boot(routes: any RoutesBuilder) throws {
-        let articles = routes
-            .grouped("articles")
+        routes
             .grouped(JWTMiddleware())
+            .groupedOpenAPIResponse(statusCode: .unauthorized, description: "Unauthorized")
+            .group(
+                tags: TagObject(
+                    name: "articles",
+                    description: "Blog article management",
+                    externalDocs: ExternalDocumentationObject(
+                        description: "Find out more about articles",
+                        url: URL(string: "https://blog-api.com/docs/articles")!
+                    )
+                )
+            ) { articles in
+                articles.get(use: self.getAllArticles)
+                    .openAPI(
+                        summary: "Get all articles",
+                        description: "Retrieve all articles, optionally filtered by search query",
+                        operationId: "getAllArticles",
+                        query: ["q": .string],
+                        response: .type([ArticleDTO].self),
+                        responseContentType: .application(.json),
+                        links: [
+                            Link("id", in: .response): Link.ArticleID.self
+                        ],
+                        auth: .blogAuth
+                    )
+                    .response(statusCode: .ok, description: "Articles retrieved successfully")
 
-        articles.get(use: self.index)
-        articles.post(use: self.create)
-        articles.group(":articleID") { article in
-            article.get(use: self.show)
-            article.put(use: self.update)
-            article.delete(use: self.delete)
-        }
+                articles.post(use: self.createArticle)
+                    .openAPI(
+                        summary: "Create new article",
+                        description: "Create a new article",
+                        operationId: "createArticle",
+                        body: .type(CreateArticleRequest.self),
+                        contentType: .application(.json),
+                        response: .type(ArticleDTO.self),
+                        responseContentType: .application(.json),
+                        links: [
+                            Link("id", in: .response): Link.ArticleID.self
+                        ],
+                        auth: .blogAuth
+                    )
+                    .response(statusCode: .created, description: "Article created successfully")
+                    .response(statusCode: .badRequest, description: "Invalid input")
+
+                articles
+                    .groupedOpenAPIResponse(statusCode: .notFound, description: "Article not found")
+                    .group(":articleID") { article in
+                        article.get(use: self.getArticleById)
+                            .openAPI(
+                                summary: "Get article by ID",
+                                description: "Retrieve a specific article by its ID",
+                                operationId: "getArticleById",
+                                response: .type(ArticleDTO.self),
+                                responseContentType: .application(.json),
+                                links: [
+                                    Link("articleID", in: .path): Link.ArticleID.self
+                                ],
+                                auth: .blogAuth
+                            )
+                            .response(statusCode: .ok, description: "Article retrieved successfully")
+                        
+                        article.put(use: self.updateArticle)
+                            .openAPI(
+                                summary: "Update article",
+                                description: "Update an existing article",
+                                operationId: "updateArticle",
+                                body: .type(UpdateArticleRequest.self),
+                                contentType: .application(.json),
+                                response: .type(ArticleDTO.self),
+                                responseContentType: .application(.json),
+                                links: [
+                                    Link("articleID", in: .path): Link.ArticleID.self
+                                ],
+                                auth: .blogAuth
+                            )
+                            .response(statusCode: .ok, description: "Article updated successfully")
+                            .response(statusCode: .badRequest, description: "Invalid input")
+                        
+                        article.delete(use: self.deleteArticle)
+                            .openAPI(
+                                summary: "Delete article",
+                                description: "Delete an existing article",
+                                operationId: "deleteArticle",
+                                links: [
+                                    Link("articleID", in: .path): Link.ArticleID.self
+                                ],
+                                auth: .blogAuth
+                            )
+                            .response(statusCode: .noContent, description: "Article deleted successfully")
+                    }
+            }
     }
 
     @Sendable
-    func index(req: Request) async throws -> [ArticleDTO] {
+    func getAllArticles(req: Request) async throws -> [ArticleDTO] {
         if let query = req.query[String.self, at: "q"] {
             let queryNormalized = query.lowercased()
             return try await Article.query(on: req.db)
@@ -35,17 +117,17 @@ struct ArticleController: RouteCollection {
     }
 
     @Sendable
-    func create(req: Request) async throws -> ArticleDTO {
-        try ArticleRequest.validate(content: req)
+    func createArticle(req: Request) async throws -> ArticleDTO {
+        try CreateArticleRequest.validate(content: req)
         let user = try req.auth.require(User.self)
 
-        let article = try req.content.decode(ArticleRequest.self).toModel(with: user.requireID())
+        let article = try req.content.decode(CreateArticleRequest.self).toModel(with: user.requireID())
         try await article.save(on: req.db)
         return article.toDTO()
     }
 
     @Sendable
-    func show(req: Request) async throws -> ArticleDTO {
+    func getArticleById(req: Request) async throws -> ArticleDTO {
         guard let article = try await Article.find(req.parameters.get("articleID"), on: req.db) else {
             throw APIError.articleNotFound
         }
@@ -53,7 +135,7 @@ struct ArticleController: RouteCollection {
     }
 
     @Sendable
-    func update(req: Request) async throws -> ArticleDTO {
+    func updateArticle(req: Request) async throws -> ArticleDTO {
         let user = try req.auth.require(User.self)
 
         let updatedArticle = try req.content.decode(ArticleDTO.self).toModel(with: user.requireID())
@@ -70,7 +152,7 @@ struct ArticleController: RouteCollection {
     }
 
     @Sendable
-    func delete(req: Request) async throws -> HTTPStatus {
+    func deleteArticle(req: Request) async throws -> HTTPStatus {
         guard let article = try await Article.find(req.parameters.get("articleID"), on: req.db) else {
             throw APIError.articleNotFound
         }

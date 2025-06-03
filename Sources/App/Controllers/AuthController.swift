@@ -123,13 +123,13 @@ struct AuthController: RouteCollection {
         if try await User.query(on: req.db)
             .filter(\.$username == normalizedUsername)
             .first() != nil {
-            throw APIErrorDTO.conflict(message: "A user with this username already exists", path: req.url.path)
+            throw APIError.usernameAlreadyExists
         }
 
         if try await User.query(on: req.db)
             .filter(\.$email == normalizedEmail)
             .first() != nil {
-            throw APIErrorDTO.conflict(message: "A user with this email already exists", path: req.url.path)
+            throw APIError.emailAlreadyExists
         }
 
         let user = try User(
@@ -155,11 +155,11 @@ struct AuthController: RouteCollection {
             .with(\.$avatar)
             .first()
         else {
-            throw APIErrorDTO.invalidCredentials(path: req.url.path)
+            throw APIError.invalidCredentials
         }
 
         guard try Bcrypt.verify(loginRequest.password, created: user.passwordHash) else {
-            throw APIErrorDTO.invalidCredentials(path: req.url.path)
+            throw APIError.invalidCredentials
         }
 
         let token = try await user.generateToken(on: req)
@@ -201,7 +201,7 @@ struct AuthController: RouteCollection {
             .with(\.$avatar)
             .first()
         else {
-            throw APIErrorDTO.userNotFound(path: req.url.path)
+            throw APIError.userNotFound
         }
 
         return userDB.toDTO(on: req)
@@ -213,7 +213,7 @@ struct AuthController: RouteCollection {
         let file = try req.content.decode(FileUpload.self).file
 
         guard let fileExtension = file.extension else {
-            throw APIErrorDTO.badRequest(message: "Malformed file", path: req.url.path)
+            throw APIError.invalidFileFormat
         }
 
         let fileName = "\(UUID().uuidString.lowercased()).\(fileExtension)"
@@ -238,7 +238,7 @@ struct AuthController: RouteCollection {
                 .with(\.$avatar)
                 .first()
             else {
-                throw APIErrorDTO.userNotFound(path: req.url.path)
+                throw APIError.userNotFound
             }
 
             return userDB.toDTO(on: req)
@@ -251,7 +251,7 @@ struct AuthController: RouteCollection {
 
         return try await req.db.transaction { transaction in
             guard let avatar = try await user.$avatar.get(on: transaction) else {
-                throw APIErrorDTO.badRequest(message: "User does not have an avatar", path: req.url.path)
+                throw APIError.avatarNotFound
             }
             try await req.fileStorage.deleteFile(key: avatar.key)
             try await avatar.delete(on: transaction)
@@ -261,7 +261,7 @@ struct AuthController: RouteCollection {
                 .with(\.$avatar)
                 .first()
             else {
-                throw APIErrorDTO.userNotFound(path: req.url.path)
+                throw APIError.userNotFound
             }
 
             return userDB.toDTO(on: req)

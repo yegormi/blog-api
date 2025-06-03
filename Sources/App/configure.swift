@@ -9,6 +9,9 @@ import SotoS3
 import Vapor
 
 public func configure(_ app: Application) async throws {
+    app.middleware = .init()
+    app.middleware.use(RouteLoggingMiddleware(logLevel: .info))
+    app.middleware.use(APIErrorMiddleware.default(environment: app.environment))
     app.middleware.use(
         FileMiddleware(
             publicDirectory: app.directory.publicDirectory,

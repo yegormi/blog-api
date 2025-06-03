@@ -50,7 +50,6 @@ struct CommentController: RouteCollection {
                         auth: .blogAuth
                     )
                     .response(statusCode: .badRequest, body: .type(APIErrorDTO.self), description: "Invalid input")
-                    .response(statusCode: .notFound, body: .type(APIErrorDTO.self), description: "Article not found")
                 
                 comments
                     .groupedOpenAPIResponse(statusCode: .notFound, body: .type(APIErrorDTO.self), description: "Comment not found")
@@ -86,7 +85,6 @@ struct CommentController: RouteCollection {
                             )
                             .response(statusCode: .badRequest, body: .type(APIErrorDTO.self), description: "Invalid input")
                             .response(statusCode: .forbidden, body: .type(APIErrorDTO.self), description: "Forbidden - not comment author")
-                            .response(statusCode: .notFound, body: .type(APIErrorDTO.self), description: "Not found")
                         
                         comment.delete(use: self.deleteComment)
                             .openAPI(
@@ -108,7 +106,7 @@ struct CommentController: RouteCollection {
     @Sendable
     func getArticleComments(req: Request) async throws -> [CommentDTO] {
         guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
-            throw APIErrorDTO.badRequest(message: "Invalid article ID", path: req.url.path)
+            throw APIError.invalidParameter
         }
         return try await Comment.query(on: req.db)
             .filter(\.$article.$id == articleID)
@@ -123,7 +121,7 @@ struct CommentController: RouteCollection {
 
         let createComment = try req.content.decode(CommentRequest.self)
         guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
-            throw APIErrorDTO.badRequest(message: "Invalid article ID", path: req.url.path)
+            throw APIError.invalidParameter
         }
         let comment = try Comment(content: createComment.content, articleID: articleID, userID: user.requireID())
         try await comment.save(on: req.db)
@@ -132,7 +130,7 @@ struct CommentController: RouteCollection {
             .filter(\.$id == comment.id!)
             .with(\.$user)
             .first() else {
-            throw APIErrorDTO.internalServerError(message: "Failed to retrieve created comment", path: req.url.path)
+            throw APIError.databaseError
         }
 
         return savedComment.toDTO(on: req)
@@ -141,13 +139,13 @@ struct CommentController: RouteCollection {
     @Sendable
     func getCommentById(req: Request) async throws -> CommentDTO {
         guard let commentId = req.parameters.get("commentID", as: UUID.self) else {
-            throw APIErrorDTO.badRequest(message: "Invalid comment ID", path: req.url.path)
+            throw APIError.invalidParameter
         }
         guard let comment = try await Comment.query(on: req.db)
             .filter(\.$id == commentId)
             .with(\.$user)
             .first() else {
-            throw APIErrorDTO.badRequest(message: "Comment not found", path: req.url.path)
+            throw APIError.commentNotFound
         }
         return comment.toDTO(on: req)
     }
@@ -158,16 +156,16 @@ struct CommentController: RouteCollection {
 
         let updatedComment = try req.content.decode(CommentRequest.self)
         guard let commentId = req.parameters.get("commentID", as: UUID.self) else {
-            throw APIErrorDTO.badRequest(message: "Invalid comment ID", path: req.url.path)
+            throw APIError.invalidParameter
         }
         guard let comment = try await Comment.query(on: req.db)
             .filter(\.$id == commentId)
             .with(\.$user)
             .first() else {
-            throw APIErrorDTO.badRequest(message: "Comment not found", path: req.url.path)
+            throw APIError.commentNotFound
         }
         guard try comment.$user.id == user.requireID() else {
-            throw APIErrorDTO.forbidden(message: "You can only modify your own comments", path: req.url.path)
+            throw APIError.resourceOwnershipRequired
         }
         comment.content = updatedComment.content
         try await comment.save(on: req.db)
@@ -178,10 +176,10 @@ struct CommentController: RouteCollection {
     func deleteComment(req: Request) async throws -> HTTPStatus {
         let user = try req.auth.require(User.self)
         guard let comment = try await Comment.find(req.parameters.get("commentID"), on: req.db) else {
-            throw APIErrorDTO.badRequest(message: "Comment not found", path: req.url.path)
+            throw APIError.commentNotFound
         }
         guard try comment.$user.id == user.requireID() else {
-            throw APIErrorDTO.forbidden(message: "You can only modify your own comments", path: req.url.path)
+            throw APIError.resourceOwnershipRequired
         }
         try await comment.delete(on: req.db)
         return .noContent

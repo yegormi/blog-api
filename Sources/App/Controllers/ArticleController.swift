@@ -125,7 +125,7 @@ struct ArticleController: RouteCollection {
     @Sendable
     func getArticleById(req: Request) async throws -> ArticleDTO {
         guard let article = try await Article.find(req.parameters.get("articleID"), on: req.db) else {
-            throw APIErrorDTO.articleNotFound(path: req.url.path)
+            throw APIError.articleNotFound
         }
         return article.toDTO()
     }
@@ -137,7 +137,7 @@ struct ArticleController: RouteCollection {
         let updatedArticle = try req.content.decode(UpdateArticleRequest.self).toModel(with: user.requireID())
 
         guard let article = try await Article.find(req.parameters.get("articleID"), on: req.db) else {
-            throw APIErrorDTO.articleNotFound(path: req.url.path)
+            throw APIError.articleNotFound
         }
 
         article.title = updatedArticle.title
@@ -150,7 +150,7 @@ struct ArticleController: RouteCollection {
     @Sendable
     func deleteArticle(req: Request) async throws -> HTTPStatus {
         guard let article = try await Article.find(req.parameters.get("articleID"), on: req.db) else {
-            throw APIErrorDTO.articleNotFound(path: req.url.path)
+            throw APIError.articleNotFound
         }
         try await article.delete(on: req.db)
         return .noContent

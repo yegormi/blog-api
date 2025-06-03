@@ -6,7 +6,7 @@ struct JWTMiddleware: AsyncMiddleware {
     func respond(to request: Request, chainingTo next: any AsyncResponder) async throws -> Response {
         /// Get bearer token from Headers
         guard let bearer = request.headers.bearerAuthorization else {
-            throw Abort(.unauthorized, reason: "Missing authorization token")
+            throw APIError.missingToken
         }
         /// Compare token from DB to the one in request
         guard
@@ -15,17 +15,17 @@ struct JWTMiddleware: AsyncMiddleware {
             .with(\.$user)
             .first()
         else {
-            throw Abort(.unauthorized, reason: "Invalid token")
+            throw APIError.invalidToken
         }
         /// Verify token expiration
         guard let expiresAt = token.expiresAt, expiresAt > Date() else {
-            throw Abort(.unauthorized, reason: "Token expired")
+            throw APIError.tokenExpired
         }
         /// Verify JWT signature and payload
         let payload = try await request.jwt.verify(bearer.token, as: Payload.self)
 
         guard payload.subject.value == token.user.id?.uuidString else {
-            throw Abort(.unauthorized, reason: "Invalid token subject")
+            throw APIError.invalidToken
         }
         /// Authenticate current session with user
         request.auth.login(token.user)

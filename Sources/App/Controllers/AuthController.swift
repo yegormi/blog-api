@@ -29,7 +29,6 @@ struct AuthController: RouteCollection {
                         response: .type(TokenDTO.self),
                         responseContentType: .application(.json)
                     )
-                    .response(statusCode: .created, description: "User created successfully")
                     .response(statusCode: .conflict, description: "User already exists")
                 
                 auth.post("login", use: self.loginUser)
@@ -42,7 +41,6 @@ struct AuthController: RouteCollection {
                         response: .type(TokenDTO.self),
                         responseContentType: .application(.json)
                     )
-                    .response(statusCode: .ok, description: "Login successful")
                     .response(statusCode: .unauthorized, description: "Invalid credentials")
             }
 
@@ -67,7 +65,6 @@ struct AuthController: RouteCollection {
                         responseContentType: .application(.json),
                         auth: .blogAuth
                     )
-                    .response(statusCode: .ok, description: "User profile retrieved successfully")
                     .response(statusCode: .notFound, description: "User not found")
                 
                 me.post("logout", use: self.logoutUser)
@@ -100,7 +97,6 @@ struct AuthController: RouteCollection {
                         responseContentType: .application(.json),
                         auth: .blogAuth
                     )
-                    .response(statusCode: .ok, description: "Avatar uploaded successfully")
                     .response(statusCode: .badRequest, description: "Invalid file")
                 
                 avatar.on(.DELETE, "remove", use: self.removeUserAvatar)
@@ -112,7 +108,6 @@ struct AuthController: RouteCollection {
                         responseContentType: .application(.json),
                         auth: .blogAuth
                     )
-                    .response(statusCode: .ok, description: "Avatar removed successfully")
                     .response(statusCode: .notFound, description: "Avatar not found")
             }
     }

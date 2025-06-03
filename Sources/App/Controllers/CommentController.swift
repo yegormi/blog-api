@@ -32,7 +32,6 @@ struct CommentController: RouteCollection {
                         ],
                         auth: .blogAuth
                     )
-                    .response(statusCode: .ok, description: "Comments retrieved successfully")
 
                 comments.post(use: self.createComment)
                     .openAPI(
@@ -49,7 +48,6 @@ struct CommentController: RouteCollection {
                         ],
                         auth: .blogAuth
                     )
-                    .response(statusCode: .created, description: "Comment created successfully")
                     .response(statusCode: .notFound, description: "Article not found")
                 
                 comments
@@ -68,7 +66,6 @@ struct CommentController: RouteCollection {
                                 ],
                                 auth: .blogAuth
                             )
-                            .response(statusCode: .ok, description: "Comment retrieved successfully")
                         
                         comment.put(use: self.updateComment)
                             .openAPI(
@@ -85,7 +82,6 @@ struct CommentController: RouteCollection {
                                 ],
                                 auth: .blogAuth
                             )
-                            .response(statusCode: .ok, description: "Comment updated successfully")
                             .response(statusCode: .forbidden, description: "Forbidden - not comment author")
                         
                         comment.delete(use: self.deleteComment)

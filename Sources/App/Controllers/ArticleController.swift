@@ -30,7 +30,6 @@ struct ArticleController: RouteCollection {
                         ],
                         auth: .blogAuth
                     )
-                    .response(statusCode: .ok, description: "Articles retrieved successfully")
 
                 articles.post(use: self.createArticle)
                     .openAPI(
@@ -46,7 +45,6 @@ struct ArticleController: RouteCollection {
                         ],
                         auth: .blogAuth
                     )
-                    .response(statusCode: .created, description: "Article created successfully")
                     .response(statusCode: .badRequest, description: "Invalid input")
 
                 articles
@@ -64,7 +62,6 @@ struct ArticleController: RouteCollection {
                                 ],
                                 auth: .blogAuth
                             )
-                            .response(statusCode: .ok, description: "Article retrieved successfully")
                         
                         article.put(use: self.updateArticle)
                             .openAPI(
@@ -80,7 +77,6 @@ struct ArticleController: RouteCollection {
                                 ],
                                 auth: .blogAuth
                             )
-                            .response(statusCode: .ok, description: "Article updated successfully")
                             .response(statusCode: .badRequest, description: "Invalid input")
                         
                         article.delete(use: self.deleteArticle)
@@ -138,7 +134,7 @@ struct ArticleController: RouteCollection {
     func updateArticle(req: Request) async throws -> ArticleDTO {
         let user = try req.auth.require(User.self)
 
-        let updatedArticle = try req.content.decode(ArticleDTO.self).toModel(with: user.requireID())
+        let updatedArticle = try req.content.decode(UpdateArticleRequest.self).toModel(with: user.requireID())
 
         guard let article = try await Article.find(req.parameters.get("articleID"), on: req.db) else {
             throw APIError.articleNotFound

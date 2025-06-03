@@ -208,7 +208,7 @@ extension APIResponse where T: Collection, T.Element: Codable & Sendable {
         )
 
         let meta = ResponseMeta(
-            pagination: pagination,
+            pagination: pagination
         )
 
         return APIResponse<T>(

@@ -1,3 +1,5 @@
+import SotoCore
+import SotoS3
 import Vapor
 
 public struct BucketStorageKey: StorageKey {
@@ -8,7 +10,7 @@ extension Application {
     var awsClient: AWSClient {
         get {
             guard let client = self.storage[BucketStorageKey.self] else {
-                fatalError("AWSClient not setup. Use app.awsClient = ...")
+                preconditionFailure("AWSClient not setup. Use app.awsClient = ...")
             }
             return client
         }
@@ -17,5 +19,11 @@ extension Application {
                 try $0.syncShutdown()
             }
         }
+    }
+}
+
+extension Request {
+    var awsClient: AWSClient {
+        self.application.awsClient
     }
 }

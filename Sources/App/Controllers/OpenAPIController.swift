@@ -6,8 +6,8 @@ struct OpenAPIController: RouteCollection {
         routes.get("swagger", "swagger.json") { req in
             req.application.routes.openAPI(
                 info: InfoObject(
-                    title: "Swagger Blog API - OpenAPI 3.0",
-                    description: "This is a sample Blog API based on the OpenAPI 3.0.1 specification.",
+                    title: "Blog API",
+                    description: "REST API for Blog",
                     termsOfService: URL(string: "http://swagger.io/terms/"),
                     contact: ContactObject(
                         email: "apiteam@swagger.io"
@@ -16,7 +16,7 @@ struct OpenAPIController: RouteCollection {
                         name: "Apache 2.0",
                         url: URL(string: "http://www.apache.org/licenses/LICENSE-2.0.html")
                     ),
-                    version: Version(1, 0, 17)
+                    version: Version(1, 0, 0)
                 ),
                 externalDocs: ExternalDocumentationObject(
                     description: "Find out more about Swagger",

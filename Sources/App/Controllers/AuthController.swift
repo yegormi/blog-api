@@ -13,7 +13,7 @@ struct AuthController: RouteCollection {
                 description: "User authentication and registration",
                 externalDocs: ExternalDocumentationObject(
                     description: "Find out more about authentication",
-                    url: URL(string: "https://your-blog-api.com/docs/auth")!
+                    url: URL(string: "https://blog-api.com/docs/auth")!
                 )
             )
         ) { auth in

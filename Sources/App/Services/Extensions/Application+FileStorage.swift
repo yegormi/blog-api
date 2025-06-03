@@ -1,3 +1,5 @@
+import Vapor
+
 public struct FileStorageKey: StorageKey {
     public typealias Value = FileStorageService
 }
@@ -6,7 +8,7 @@ extension Application {
     var fileStorage: any FileStorageService {
         get {
             guard let storage = storage[FileStorageKey.self] else {
-                fatalError("FileStorage not configured. Use app.fileStorage = ...")
+                preconditionFailure("FileStorage not configured. Use app.fileStorage = ...")
             }
             return storage
         }

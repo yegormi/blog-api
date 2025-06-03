@@ -12,7 +12,7 @@ struct CommentController: RouteCollection {
                     description: "Article comment management",
                     externalDocs: ExternalDocumentationObject(
                         description: "Find out more about comments",
-                        url: URL(string: "https://your-blog-api.com/docs/comments")!
+                        url: URL(string: "https://blog-api.com/docs/comments")!
                     )
                 )
             ) { comments in

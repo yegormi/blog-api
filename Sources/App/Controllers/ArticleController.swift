@@ -11,7 +11,7 @@ struct ArticleController: RouteCollection {
                     description: "Blog article management",
                     externalDocs: ExternalDocumentationObject(
                         description: "Find out more about articles",
-                        url: URL(string: "https://your-blog-api.com/docs/articles")!
+                        url: URL(string: "https://blog-api.com/docs/articles")!
                     )
                 )
             ) { articles in

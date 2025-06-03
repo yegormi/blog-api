@@ -55,7 +55,7 @@ public func configure(_ app: Application) async throws {
     app.migrations.add(CreateComment())
 
     guard let jwtSecret = Environment.get("JWT_SECRET") else {
-        fatalError("JWT_SECRET environment variable is not set")
+        preconditionFailure("JWT_SECRET environment variable is not set")
     }
     await app.jwt.keys.add(hmac: .init(from: jwtSecret), digestAlgorithm: .sha256)
 

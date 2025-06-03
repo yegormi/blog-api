@@ -3,7 +3,12 @@ import VaporToOpenAPI
 
 struct OpenAPIController: RouteCollection {
     func boot(routes: any RoutesBuilder) throws {
-        routes.get("swagger", "swagger.json") { req in
+        routes.get("swagger") { req in
+            req.redirect(to: "swagger/", redirectType: .permanent)
+        }
+        .excludeFromOpenAPI()
+        
+        routes.get("swagger", "openapi.json") { req in
             req.application.routes.openAPI(
                 info: InfoObject(
                     title: "Blog API",
@@ -28,7 +33,7 @@ struct OpenAPIController: RouteCollection {
 
         routes.stoplightDocumentation(
             "stoplight",
-            openAPIPath: "/swagger/swagger.json"
+            openAPIPath: "/swagger/openapi.json"
         )
     }
 }

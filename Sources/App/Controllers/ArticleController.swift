@@ -2,9 +2,10 @@ import Fluent
 import Vapor
 
 struct ArticleController: RouteCollection {
-    func boot(routes: RoutesBuilder) throws {
-        let routes = routes.grouped("articles")
-        let articles = routes.grouped(BearerAuthenticator())
+    func boot(routes: any RoutesBuilder) throws {
+        let articles = routes
+            .grouped("articles")
+            .grouped(JWTMiddleware())
 
         articles.get(use: self.index)
         articles.post(use: self.create)
@@ -17,12 +18,28 @@ struct ArticleController: RouteCollection {
 
     @Sendable
     func index(req: Request) async throws -> [ArticleDTO] {
-        try await Article.query(on: req.db).all().map { $0.toDTO() }
+        if let query = req.query[String.self, at: "q"] {
+            let queryNormalized = query.lowercased()
+            return try await Article.query(on: req.db)
+                .group(.or) { group in
+                    group.filter(\.$title ~~ queryNormalized)
+                    group.filter(\.$content ~~ queryNormalized)
+                }
+                .all()
+                .map { $0.toDTO() }
+        } else {
+            return try await Article.query(on: req.db)
+                .all()
+                .map { $0.toDTO() }
+        }
     }
 
     @Sendable
     func create(req: Request) async throws -> ArticleDTO {
-        let article = try req.content.decode(ArticleDTO.self).toModel()
+        try ArticleRequest.validate(content: req)
+        let user = try req.auth.require(User.self)
+
+        let article = try req.content.decode(ArticleRequest.self).toModel(with: user.requireID())
         try await article.save(on: req.db)
         return article.toDTO()
     }
@@ -37,7 +54,9 @@ struct ArticleController: RouteCollection {
 
     @Sendable
     func update(req: Request) async throws -> ArticleDTO {
-        let updatedArticle = try req.content.decode(ArticleDTO.self).toModel()
+        let user = try req.auth.require(User.self)
+
+        let updatedArticle = try req.content.decode(ArticleDTO.self).toModel(with: user.requireID())
 
         guard let article = try await Article.find(req.parameters.get("articleID"), on: req.db) else {
             throw APIError.articleNotFound

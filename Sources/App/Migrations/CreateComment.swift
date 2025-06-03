@@ -1,18 +1,17 @@
 import Fluent
 
-struct CreateArticle: AsyncMigration {
+struct CreateComment: AsyncMigration {
     func prepare(on database: any Database) async throws {
-        try await database.schema(Article.schema)
+        try await database.schema(Comment.schema)
             .id()
-            .field("title", .string, .required)
             .field("content", .string, .required)
+            .field("article_id", .uuid, .required, .references("articles", "id", onDelete: .cascade))
             .field("user_id", .uuid, .required, .references("users", "id", onDelete: .cascade))
             .field("created_at", .string)
-            .field("updated_at", .string)
             .create()
     }
 
     func revert(on database: any Database) async throws {
-        try await database.schema(Article.schema).delete()
+        try await database.schema(Comment.schema).delete()
     }
 }

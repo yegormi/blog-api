@@ -13,7 +13,7 @@ struct Payload: JWTPayload, Equatable {
     var expiration: ExpirationClaim
     var issuedAt: IssuedAtClaim
 
-    func verify(using _: JWTSigner) throws {
+    func verify(using _: some JWTAlgorithm) async throws {
         try self.expiration.verifyNotExpired()
     }
 }
@@ -27,11 +27,11 @@ final class Token: Model, @unchecked Sendable {
     @Field(key: "token")
     var token: String
 
-    @Parent(key: "userID")
+    @Parent(key: "user_id")
     var user: User
 
-    @Field(key: "expires_at")
-    var expiresAt: Date
+    @Timestamp(key: "expires_at", on: .none, format: .iso8601(withMilliseconds: true))
+    var expiresAt: Date?
 
     init() {}
 
@@ -44,7 +44,17 @@ final class Token: Model, @unchecked Sendable {
 }
 
 extension Token {
-    func toDTO() -> TokenDTO {
-        .init(token: self.token, user: self.user.toDTO())
+    func toDTO(with user: UserDTO) -> TokenDTO {
+        .init(token: self.token, user: user)
+    }
+}
+
+extension Token: ModelTokenAuthenticatable {
+    static var valueKey: KeyPath<Token, Field<String>> { \.$token }
+    static var userKey: KeyPath<Token, Parent<User>> { \.$user }
+
+    var isValid: Bool {
+        guard let expiresAt = self.expiresAt else { return false }
+        return expiresAt > Date()
     }
 }

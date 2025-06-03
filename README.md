@@ -21,15 +21,15 @@ BlogAPI is a RESTful API designed for creating, reading, updating, and deleting 
 ## Getting Started
 
 ### Prerequisites
-- Swift 5.6 or later
+- Swift 6 or later
 - Vapor 4
 - PostgreSQL (if using for production)
 
 ### Installation
 1. Clone the repository:
     ```bash
-    git clone https://github.com/yegormi/BlogAPI.git
-    cd BlogAPI
+    git clone https://github.com/yegormi/blog-api.git
+    cd blog-api
     ```
 
 2. Install dependencies:
@@ -37,12 +37,12 @@ BlogAPI is a RESTful API designed for creating, reading, updating, and deleting 
     swift package update
     ```
 
-3. Set up the environment variables as required in `.env`.
+3. Set up the environment variables as required in `.env.example`.
 
 ### Usage
 1. Run the application:
     ```bash
-    vapor run serve
+    swift run
     ```
 2. Access the API documentation at `http://localhost:8080/docs` for available endpoints and usage.
 

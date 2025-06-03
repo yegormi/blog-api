@@ -20,9 +20,13 @@ struct ArticleController: RouteCollection {
                 articles.get(use: self.getAllArticles)
                     .openAPI(
                         summary: "Get all articles",
-                        description: "Retrieve all articles, optionally filtered by search query",
+                        description: "Retrieve all articles, optionally filtered by search query with pagination support",
                         operationId: "getAllArticles",
-                        query: ["q": .string],
+                        query: [
+                            "q": .string,
+                            "page": .integer,
+                            "perPage": .integer
+                        ],
                         response: .type(APIResponse<[ArticleDTO]>.self),
                         responseContentType: .application(.json),
                         links: [
@@ -96,25 +100,35 @@ struct ArticleController: RouteCollection {
 
     @Sendable
     func getAllArticles(req: Request) async throws -> APIResponse<[ArticleDTO]> {
-        let articles: [ArticleDTO]
+        let pagination = PaginationRequest(
+            page: req.query[Int.self, at: "page"],
+            perPage: req.query[Int.self, at: "perPage"]
+        )
         
-        if let query = req.query[String.self, at: "q"] {
-            let queryNormalized = query.lowercased()
-            articles = try await Article.query(on: req.db)
-                .group(.or) { group in
-                    group.filter(\.$title ~~ queryNormalized)
-                    group.filter(\.$content ~~ queryNormalized)
-                }
-                .all()
-                .map { $0.toDTO() }
-        } else {
-            articles = try await Article.query(on: req.db)
-                .all()
-                .map { $0.toDTO() }
+        let searchQuery = req.query[String.self, at: "q"]
+        
+        var query = Article.query(on: req.db)
+        
+        if let searchQuery {
+            let queryNormalized = searchQuery.lowercased()
+            query = query.group(.or) { group in
+                group.filter(\.$title ~~ queryNormalized)
+                group.filter(\.$content ~~ queryNormalized)
+            }
         }
         
-        return req.success(
+        let totalItems = try await query.count()
+        
+        let articles = try await query
+            .range(pagination.offset..<(pagination.offset + pagination.validatedPerPage))
+            .all()
+            .map { $0.toDTO() }
+        
+        return req.successWithPagination(
             articles,
+            currentPage: pagination.validatedPage,
+            perPage: pagination.validatedPerPage,
+            totalItems: totalItems,
             message: "Articles retrieved successfully"
         )
     }

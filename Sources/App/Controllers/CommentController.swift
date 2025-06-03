@@ -22,8 +22,12 @@ struct CommentController: RouteCollection {
                 comments.get(use: self.getArticleComments)
                     .openAPI(
                         summary: "Get article comments",
-                        description: "Retrieve all comments for a specific article",
+                        description: "Retrieve all comments for a specific article with pagination support",
                         operationId: "getArticleComments",
+                        query: [
+                            "page": .integer,
+                            "perPage": .integer
+                        ],
                         response: .type(APIResponse<[CommentDTO]>.self),
                         responseContentType: .application(.json),
                         links: [
@@ -108,14 +112,28 @@ struct CommentController: RouteCollection {
         guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
             throw APIError.invalidParameter
         }
-        let comments = try await Comment.query(on: req.db)
+        
+        let pagination = PaginationRequest(
+            page: req.query[Int.self, at: "page"],
+            perPage: req.query[Int.self, at: "perPage"]
+        )
+        
+        let query = Comment.query(on: req.db)
             .filter(\.$article.$id == articleID)
             .with(\.$user)
+        
+        let totalItems = try await query.count()
+        
+        let comments = try await query
+            .range(pagination.offset..<(pagination.offset + pagination.validatedPerPage))
             .all()
             .map { $0.toDTO(on: req) }
         
-        return req.success(
+        return req.successWithPagination(
             comments,
+            currentPage: pagination.validatedPage,
+            perPage: pagination.validatedPerPage,
+            totalItems: totalItems,
             message: "Article comments retrieved successfully"
         )
     }

@@ -8,12 +8,12 @@ struct OpenAPIController: RouteCollection {
             req.redirect(to: "swagger/", redirectType: .permanent)
         }
         .excludeFromOpenAPI()
-        
+
         routes.get("swagger", "openapi.json") { req in
             req.application.routes.blogOpenAPI
         }
         .excludeFromOpenAPI()
-        
+
         routes.get("swagger", "openapi.yaml") { req in
             try Response(
                 status: .ok,

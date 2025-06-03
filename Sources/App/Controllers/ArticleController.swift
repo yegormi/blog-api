@@ -15,7 +15,7 @@ struct ArticleController: RouteCollection {
                     )
                 )
             ) { articles in
-                articles.get(use: self.index)
+                articles.get(use: self.getAllArticles)
                     .openAPI(
                         summary: "Get all articles",
                         description: "Retrieve all articles, optionally filtered by search query",
@@ -24,12 +24,12 @@ struct ArticleController: RouteCollection {
                         response: .type([ArticleDTO].self),
                         responseContentType: .application(.json),
                         links: [
-                            Link("Authorization", in: .request(.header)): Link.UserToken.self
+                            Link("id", in: .response): Link.ArticleID.self
                         ],
                         auth: .blogAuth
                     )
 
-                articles.post(use: self.create)
+                articles.post(use: self.createArticle)
                     .openAPI(
                         summary: "Create new article",
                         description: "Create a new article",
@@ -39,8 +39,7 @@ struct ArticleController: RouteCollection {
                         response: .type(ArticleDTO.self),
                         responseContentType: .application(.json),
                         links: [
-                            Link("Authorization", in: .request(.header)): Link.UserToken.self,
-                            Link("id", in: .response): Link.ArticleID.self,
+                            Link("id", in: .response): Link.ArticleID.self
                         ],
                         auth: .blogAuth
                     )
@@ -48,7 +47,7 @@ struct ArticleController: RouteCollection {
                     .response(statusCode: 401, description: "Unauthorized")
 
                 articles.group(":articleID") { article in
-                    article.get(use: self.show)
+                    article.get(use: self.getArticleById)
                         .openAPI(
                             summary: "Get article by ID",
                             description: "Retrieve a specific article by its ID",
@@ -56,14 +55,13 @@ struct ArticleController: RouteCollection {
                             response: .type(ArticleDTO.self),
                             responseContentType: .application(.json),
                             links: [
-                                Link("Authorization", in: .request(.header)): Link.UserToken.self,
-                                Link("articleID", in: .path): Link.ArticleID.self,
+                                Link("articleID", in: .path): Link.ArticleID.self
                             ],
                             auth: .blogAuth
                         )
                         .response(statusCode: 404, description: "Article not found")
 
-                    article.put(use: self.update)
+                    article.put(use: self.updateArticle)
                         .openAPI(
                             summary: "Update article",
                             description: "Update an existing article",
@@ -73,8 +71,7 @@ struct ArticleController: RouteCollection {
                             response: .type(ArticleDTO.self),
                             responseContentType: .application(.json),
                             links: [
-                                Link("Authorization", in: .request(.header)): Link.UserToken.self,
-                                Link("articleID", in: .path): Link.ArticleID.self,
+                                Link("articleID", in: .path): Link.ArticleID.self
                             ],
                             auth: .blogAuth
                         )
@@ -82,14 +79,13 @@ struct ArticleController: RouteCollection {
                         .response(statusCode: 401, description: "Unauthorized")
                         .response(statusCode: 404, description: "Article not found")
 
-                    article.delete(use: self.delete)
+                    article.delete(use: self.deleteArticle)
                         .openAPI(
                             summary: "Delete article",
                             description: "Delete an existing article",
                             operationId: "deleteArticle",
                             links: [
-                                Link("Authorization", in: .request(.header)): Link.UserToken.self,
-                                Link("articleID", in: .path): Link.ArticleID.self,
+                                Link("articleID", in: .path): Link.ArticleID.self
                             ],
                             auth: .blogAuth
                         )
@@ -101,7 +97,7 @@ struct ArticleController: RouteCollection {
     }
 
     @Sendable
-    func index(req: Request) async throws -> [ArticleDTO] {
+    func getAllArticles(req: Request) async throws -> [ArticleDTO] {
         if let query = req.query[String.self, at: "q"] {
             let queryNormalized = query.lowercased()
             return try await Article.query(on: req.db)
@@ -119,7 +115,7 @@ struct ArticleController: RouteCollection {
     }
 
     @Sendable
-    func create(req: Request) async throws -> ArticleDTO {
+    func createArticle(req: Request) async throws -> ArticleDTO {
         try CreateArticleRequest.validate(content: req)
         let user = try req.auth.require(User.self)
 
@@ -129,7 +125,7 @@ struct ArticleController: RouteCollection {
     }
 
     @Sendable
-    func show(req: Request) async throws -> ArticleDTO {
+    func getArticleById(req: Request) async throws -> ArticleDTO {
         guard let article = try await Article.find(req.parameters.get("articleID"), on: req.db) else {
             throw APIError.articleNotFound
         }
@@ -137,7 +133,7 @@ struct ArticleController: RouteCollection {
     }
 
     @Sendable
-    func update(req: Request) async throws -> ArticleDTO {
+    func updateArticle(req: Request) async throws -> ArticleDTO {
         let user = try req.auth.require(User.self)
 
         let updatedArticle = try req.content.decode(ArticleDTO.self).toModel(with: user.requireID())
@@ -154,7 +150,7 @@ struct ArticleController: RouteCollection {
     }
 
     @Sendable
-    func delete(req: Request) async throws -> HTTPStatus {
+    func deleteArticle(req: Request) async throws -> HTTPStatus {
         guard let article = try await Article.find(req.parameters.get("articleID"), on: req.db) else {
             throw APIError.articleNotFound
         }

@@ -17,7 +17,7 @@ struct AuthController: RouteCollection {
                 )
             )
         ) { auth in
-            auth.post("register", use: self.register)
+            auth.post("register", use: self.registerUser)
                 .openAPI(
                     summary: "Register new user",
                     description: "Create a new user account",
@@ -25,16 +25,12 @@ struct AuthController: RouteCollection {
                     body: .type(RegisterRequest.self),
                     contentType: .application(.json),
                     response: .type(TokenDTO.self),
-                    responseContentType: .application(.json),
-                    links: [
-                        Link("token", in: .response): Link.UserToken.self,
-                        Link("user.id", in: .response): Link.UserID.self,
-                    ]
+                    responseContentType: .application(.json)
                 )
                 .response(statusCode: 400, description: "Invalid input")
                 .response(statusCode: 409, description: "User already exists")
 
-            auth.post("login", use: self.login)
+            auth.post("login", use: self.loginUser)
                 .openAPI(
                     summary: "Login user",
                     description: "Authenticate user and return token",
@@ -42,11 +38,7 @@ struct AuthController: RouteCollection {
                     body: .type(LoginRequest.self),
                     contentType: .application(.json),
                     response: .type(TokenDTO.self),
-                    responseContentType: .application(.json),
-                    links: [
-                        Link("token", in: .response): Link.UserToken.self,
-                        Link("user.id", in: .response): Link.UserID.self,
-                    ]
+                    responseContentType: .application(.json)
                 )
                 .response(statusCode: 400, description: "Invalid input")
                 .response(statusCode: 401, description: "Invalid credentials")
@@ -62,49 +54,40 @@ struct AuthController: RouteCollection {
                 )
             )
         ) { me in
-            me.get(use: self.getProfile)
+            me.get(use: self.getUserProfile)
                 .openAPI(
                     summary: "Get user profile",
                     description: "Get the current user's profile information",
                     operationId: "getUserProfile",
                     response: .type(UserDTO.self),
                     responseContentType: .application(.json),
-                    links: [
-                        Link("Authorization", in: .request(.header)): Link.UserToken.self
-                    ],
                     auth: .blogAuth
                 )
                 .response(statusCode: 401, description: "Unauthorized")
                 .response(statusCode: 404, description: "User not found")
 
-            me.post("logout", use: self.logout)
+            me.post("logout", use: self.logoutUser)
                 .openAPI(
                     summary: "Logout user",
                     description: "Logout user and invalidate tokens",
                     operationId: "logoutUser",
-                    links: [
-                        Link("Authorization", in: .request(.header)): Link.UserToken.self
-                    ],
                     auth: .blogAuth
                 )
                 .response(statusCode: 204, description: "Successfully logged out")
                 .response(statusCode: 401, description: "Unauthorized")
 
-            me.delete(use: self.deleteAccount)
+            me.delete(use: self.deleteUserAccount)
                 .openAPI(
                     summary: "Delete user account",
                     description: "Delete the current user's account",
                     operationId: "deleteUserAccount",
-                    links: [
-                        Link("Authorization", in: .request(.header)): Link.UserToken.self
-                    ],
                     auth: .blogAuth
                 )
                 .response(statusCode: 204, description: "Account deleted successfully")
                 .response(statusCode: 401, description: "Unauthorized")
 
             let avatar = me.grouped("avatar")
-            avatar.on(.POST, "upload", body: .collect(maxSize: "10mb"), use: self.uploadAvatar)
+            avatar.on(.POST, "upload", body: .collect(maxSize: "10mb"), use: self.uploadUserAvatar)
                 .openAPI(
                     summary: "Upload avatar",
                     description: "Upload an avatar image for the user",
@@ -113,24 +96,18 @@ struct AuthController: RouteCollection {
                     contentType: .multipart(.formData),
                     response: .type(UserDTO.self),
                     responseContentType: .application(.json),
-                    links: [
-                        Link("Authorization", in: .request(.header)): Link.UserToken.self
-                    ],
                     auth: .blogAuth
                 )
                 .response(statusCode: 400, description: "Invalid file")
                 .response(statusCode: 401, description: "Unauthorized")
 
-            avatar.on(.DELETE, "remove", use: self.removeAvatar)
+            avatar.on(.DELETE, "remove", use: self.removeUserAvatar)
                 .openAPI(
                     summary: "Remove avatar",
                     description: "Remove the user's avatar image",
                     operationId: "removeUserAvatar",
                     response: .type(UserDTO.self),
                     responseContentType: .application(.json),
-                    links: [
-                        Link("Authorization", in: .request(.header)): Link.UserToken.self
-                    ],
                     auth: .blogAuth
                 )
                 .response(statusCode: 401, description: "Unauthorized")
@@ -139,7 +116,7 @@ struct AuthController: RouteCollection {
     }
 
     @Sendable
-    func register(req: Request) async throws -> TokenDTO {
+    func registerUser(req: Request) async throws -> TokenDTO {
         try RegisterRequest.validate(content: req)
         let request = try req.content.decode(RegisterRequest.self)
 
@@ -172,7 +149,7 @@ struct AuthController: RouteCollection {
     }
 
     @Sendable
-    func login(req: Request) async throws -> TokenDTO {
+    func loginUser(req: Request) async throws -> TokenDTO {
         try LoginRequest.validate(content: req)
         let loginRequest = try req.content.decode(LoginRequest.self)
 
@@ -195,7 +172,7 @@ struct AuthController: RouteCollection {
     }
 
     @Sendable
-    func logout(req: Request) async throws -> HTTPStatus {
+    func logoutUser(req: Request) async throws -> HTTPStatus {
         let user = try req.auth.require(User.self)
         /// Invalidate all tokens for the user or the specific token used for the request
         try await Token.query(on: req.db)
@@ -205,7 +182,7 @@ struct AuthController: RouteCollection {
     }
 
     @Sendable
-    func deleteAccount(req: Request) async throws -> HTTPStatus {
+    func deleteUserAccount(req: Request) async throws -> HTTPStatus {
         let user = try req.auth.require(User.self)
 
         try await req.db.transaction { transaction in
@@ -219,7 +196,7 @@ struct AuthController: RouteCollection {
     }
 
     @Sendable
-    func getProfile(req: Request) async throws -> UserDTO {
+    func getUserProfile(req: Request) async throws -> UserDTO {
         let user = try req.auth.require(User.self)
 
         guard let userDB = try await User.query(on: req.db)
@@ -234,7 +211,7 @@ struct AuthController: RouteCollection {
     }
 
     @Sendable
-    func uploadAvatar(req: Request) async throws -> UserDTO {
+    func uploadUserAvatar(req: Request) async throws -> UserDTO {
         let user = try req.auth.require(User.self)
         let file = try req.content.decode(FileUpload.self).file
 
@@ -272,7 +249,7 @@ struct AuthController: RouteCollection {
     }
 
     @Sendable
-    func removeAvatar(req: Request) async throws -> UserDTO {
+    func removeUserAvatar(req: Request) async throws -> UserDTO {
         let user = try req.auth.require(User.self)
 
         return try await req.db.transaction { transaction in

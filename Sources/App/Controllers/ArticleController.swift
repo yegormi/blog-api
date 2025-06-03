@@ -4,7 +4,9 @@ import VaporToOpenAPI
 
 struct ArticleController: RouteCollection {
     func boot(routes: any RoutesBuilder) throws {
-        routes.grouped(JWTMiddleware())
+        routes
+            .grouped(JWTMiddleware())
+            .groupedOpenAPIResponse(statusCode: .unauthorized, description: "Unauthorized")
             .group(
                 tags: TagObject(
                     name: "articles",
@@ -28,8 +30,7 @@ struct ArticleController: RouteCollection {
                         ],
                         auth: .blogAuth
                     )
-                    .response(statusCode: 200, description: "Articles retrieved successfully")
-                    .response(statusCode: 401, description: "Unauthorized")
+                    .response(statusCode: .ok, description: "Articles retrieved successfully")
 
                 articles.post(use: self.createArticle)
                     .openAPI(
@@ -45,60 +46,55 @@ struct ArticleController: RouteCollection {
                         ],
                         auth: .blogAuth
                     )
-                    .response(statusCode: 201, description: "Article created successfully")
-                    .response(statusCode: 400, description: "Invalid input")
-                    .response(statusCode: 401, description: "Unauthorized")
+                    .response(statusCode: .created, description: "Article created successfully")
+                    .response(statusCode: .badRequest, description: "Invalid input")
 
-                articles.group(":articleID") { article in
-                    article.get(use: self.getArticleById)
-                        .openAPI(
-                            summary: "Get article by ID",
-                            description: "Retrieve a specific article by its ID",
-                            operationId: "getArticleById",
-                            response: .type(ArticleDTO.self),
-                            responseContentType: .application(.json),
-                            links: [
-                                Link("articleID", in: .path): Link.ArticleID.self
-                            ],
-                            auth: .blogAuth
-                        )
-                        .response(statusCode: 200, description: "Article retrieved successfully")
-                        .response(statusCode: 401, description: "Unauthorized")
-                        .response(statusCode: 404, description: "Article not found")
-
-                    article.put(use: self.updateArticle)
-                        .openAPI(
-                            summary: "Update article",
-                            description: "Update an existing article",
-                            operationId: "updateArticle",
-                            body: .type(UpdateArticleRequest.self),
-                            contentType: .application(.json),
-                            response: .type(ArticleDTO.self),
-                            responseContentType: .application(.json),
-                            links: [
-                                Link("articleID", in: .path): Link.ArticleID.self
-                            ],
-                            auth: .blogAuth
-                        )
-                        .response(statusCode: 200, description: "Article updated successfully")
-                        .response(statusCode: 400, description: "Invalid input")
-                        .response(statusCode: 401, description: "Unauthorized")
-                        .response(statusCode: 404, description: "Article not found")
-
-                    article.delete(use: self.deleteArticle)
-                        .openAPI(
-                            summary: "Delete article",
-                            description: "Delete an existing article",
-                            operationId: "deleteArticle",
-                            links: [
-                                Link("articleID", in: .path): Link.ArticleID.self
-                            ],
-                            auth: .blogAuth
-                        )
-                        .response(statusCode: 204, description: "Article deleted successfully")
-                        .response(statusCode: 401, description: "Unauthorized")
-                        .response(statusCode: 404, description: "Article not found")
-                }
+                articles
+                    .groupedOpenAPIResponse(statusCode: .notFound, description: "Article not found")
+                    .group(":articleID") { article in
+                        article.get(use: self.getArticleById)
+                            .openAPI(
+                                summary: "Get article by ID",
+                                description: "Retrieve a specific article by its ID",
+                                operationId: "getArticleById",
+                                response: .type(ArticleDTO.self),
+                                responseContentType: .application(.json),
+                                links: [
+                                    Link("articleID", in: .path): Link.ArticleID.self
+                                ],
+                                auth: .blogAuth
+                            )
+                            .response(statusCode: .ok, description: "Article retrieved successfully")
+                        
+                        article.put(use: self.updateArticle)
+                            .openAPI(
+                                summary: "Update article",
+                                description: "Update an existing article",
+                                operationId: "updateArticle",
+                                body: .type(UpdateArticleRequest.self),
+                                contentType: .application(.json),
+                                response: .type(ArticleDTO.self),
+                                responseContentType: .application(.json),
+                                links: [
+                                    Link("articleID", in: .path): Link.ArticleID.self
+                                ],
+                                auth: .blogAuth
+                            )
+                            .response(statusCode: .ok, description: "Article updated successfully")
+                            .response(statusCode: .badRequest, description: "Invalid input")
+                        
+                        article.delete(use: self.deleteArticle)
+                            .openAPI(
+                                summary: "Delete article",
+                                description: "Delete an existing article",
+                                operationId: "deleteArticle",
+                                links: [
+                                    Link("articleID", in: .path): Link.ArticleID.self
+                                ],
+                                auth: .blogAuth
+                            )
+                            .response(statusCode: .noContent, description: "Article deleted successfully")
+                    }
             }
     }
 

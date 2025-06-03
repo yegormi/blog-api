@@ -7,117 +7,114 @@ struct AuthController: RouteCollection {
     func boot(routes: any RoutesBuilder) throws {
         let authenticated = routes.grouped(JWTMiddleware())
 
-        routes.group(
-            tags: TagObject(
-                name: "auth",
-                description: "User authentication and registration",
-                externalDocs: ExternalDocumentationObject(
-                    description: "Find out more about authentication",
-                    url: URL(string: "https://blog-api.com/docs/auth")!
+        routes
+            .groupedOpenAPIResponse(statusCode: .badRequest, description: "Invalid input")
+            .group(
+                tags: TagObject(
+                    name: "auth",
+                    description: "User authentication and registration",
+                    externalDocs: ExternalDocumentationObject(
+                        description: "Find out more about authentication",
+                        url: URL(string: "https://blog-api.com/docs/auth")!
+                    )
                 )
-            )
-        ) { auth in
-            auth.post("register", use: self.registerUser)
-                .openAPI(
-                    summary: "Register new user",
-                    description: "Create a new user account",
-                    operationId: "registerUser",
-                    body: .type(RegisterRequest.self),
-                    contentType: .application(.json),
-                    response: .type(TokenDTO.self),
-                    responseContentType: .application(.json)
-                )
-                .response(statusCode: 201, description: "User created successfully")
-                .response(statusCode: 400, description: "Invalid input")
-                .response(statusCode: 409, description: "User already exists")
+            ) { auth in
+                auth.post("register", use: self.registerUser)
+                    .openAPI(
+                        summary: "Register new user",
+                        description: "Create a new user account",
+                        operationId: "registerUser",
+                        body: .type(RegisterRequest.self),
+                        contentType: .application(.json),
+                        response: .type(TokenDTO.self),
+                        responseContentType: .application(.json)
+                    )
+                    .response(statusCode: .created, description: "User created successfully")
+                    .response(statusCode: .conflict, description: "User already exists")
+                
+                auth.post("login", use: self.loginUser)
+                    .openAPI(
+                        summary: "Login user",
+                        description: "Authenticate user and return token",
+                        operationId: "loginUser",
+                        body: .type(LoginRequest.self),
+                        contentType: .application(.json),
+                        response: .type(TokenDTO.self),
+                        responseContentType: .application(.json)
+                    )
+                    .response(statusCode: .ok, description: "Login successful")
+                    .response(statusCode: .unauthorized, description: "Invalid credentials")
+            }
 
-            auth.post("login", use: self.loginUser)
-                .openAPI(
-                    summary: "Login user",
-                    description: "Authenticate user and return token",
-                    operationId: "loginUser",
-                    body: .type(LoginRequest.self),
-                    contentType: .application(.json),
-                    response: .type(TokenDTO.self),
-                    responseContentType: .application(.json)
+        authenticated
+            .groupedOpenAPIResponse(statusCode: .unauthorized, description: "Unauthorized")
+            .group(
+                tags: TagObject(
+                    name: "me",
+                    description: "User profile management",
+                    externalDocs: ExternalDocumentationObject(
+                        description: "Find out more about user profiles",
+                        url: URL(string: "https://your-blog-api.com/docs/profile")!
+                    )
                 )
-                .response(statusCode: 200, description: "Login successful")
-                .response(statusCode: 400, description: "Invalid input")
-                .response(statusCode: 401, description: "Invalid credentials")
-        }
-
-        authenticated.group(
-            tags: TagObject(
-                name: "me",
-                description: "User profile management",
-                externalDocs: ExternalDocumentationObject(
-                    description: "Find out more about user profiles",
-                    url: URL(string: "https://your-blog-api.com/docs/profile")!
-                )
-            )
-        ) { me in
-            me.get(use: self.getUserProfile)
-                .openAPI(
-                    summary: "Get user profile",
-                    description: "Get the current user's profile information",
-                    operationId: "getUserProfile",
-                    response: .type(UserDTO.self),
-                    responseContentType: .application(.json),
-                    auth: .blogAuth
-                )
-                .response(statusCode: 200, description: "User profile retrieved successfully")
-                .response(statusCode: 401, description: "Unauthorized")
-                .response(statusCode: 404, description: "User not found")
-
-            me.post("logout", use: self.logoutUser)
-                .openAPI(
-                    summary: "Logout user",
-                    description: "Logout user and invalidate tokens",
-                    operationId: "logoutUser",
-                    auth: .blogAuth
-                )
-                .response(statusCode: 204, description: "Successfully logged out")
-                .response(statusCode: 401, description: "Unauthorized")
-
-            me.delete(use: self.deleteUserAccount)
-                .openAPI(
-                    summary: "Delete user account",
-                    description: "Delete the current user's account",
-                    operationId: "deleteUserAccount",
-                    auth: .blogAuth
-                )
-                .response(statusCode: 204, description: "Account deleted successfully")
-                .response(statusCode: 401, description: "Unauthorized")
-
-            let avatar = me.grouped("avatar")
-            avatar.on(.POST, "upload", body: .collect(maxSize: "10mb"), use: self.uploadUserAvatar)
-                .openAPI(
-                    summary: "Upload avatar",
-                    description: "Upload an avatar image for the user",
-                    operationId: "uploadUserAvatar",
-                    body: .type(FileUpload.self),
-                    contentType: .multipart(.formData),
-                    response: .type(UserDTO.self),
-                    responseContentType: .application(.json),
-                    auth: .blogAuth
-                )
-                .response(statusCode: 200, description: "Avatar uploaded successfully")
-                .response(statusCode: 400, description: "Invalid file")
-                .response(statusCode: 401, description: "Unauthorized")
-
-            avatar.on(.DELETE, "remove", use: self.removeUserAvatar)
-                .openAPI(
-                    summary: "Remove avatar",
-                    description: "Remove the user's avatar image",
-                    operationId: "removeUserAvatar",
-                    response: .type(UserDTO.self),
-                    responseContentType: .application(.json),
-                    auth: .blogAuth
-                )
-                .response(statusCode: 200, description: "Avatar removed successfully")
-                .response(statusCode: 401, description: "Unauthorized")
-                .response(statusCode: 404, description: "Avatar not found")
-        }
+            ) { me in
+                me.get(use: self.getUserProfile)
+                    .openAPI(
+                        summary: "Get user profile",
+                        description: "Get the current user's profile information",
+                        operationId: "getUserProfile",
+                        response: .type(UserDTO.self),
+                        responseContentType: .application(.json),
+                        auth: .blogAuth
+                    )
+                    .response(statusCode: .ok, description: "User profile retrieved successfully")
+                    .response(statusCode: .notFound, description: "User not found")
+                
+                me.post("logout", use: self.logoutUser)
+                    .openAPI(
+                        summary: "Logout user",
+                        description: "Logout user and invalidate tokens",
+                        operationId: "logoutUser",
+                        auth: .blogAuth
+                    )
+                    .response(statusCode: .noContent, description: "Successfully logged out")
+                
+                me.delete(use: self.deleteUserAccount)
+                    .openAPI(
+                        summary: "Delete user account",
+                        description: "Delete the current user's account",
+                        operationId: "deleteUserAccount",
+                        auth: .blogAuth
+                    )
+                    .response(statusCode: .noContent, description: "Account deleted successfully")
+                
+                let avatar = me.grouped("avatar")
+                avatar.on(.POST, "upload", body: .collect(maxSize: "10mb"), use: self.uploadUserAvatar)
+                    .openAPI(
+                        summary: "Upload avatar",
+                        description: "Upload an avatar image for the user",
+                        operationId: "uploadUserAvatar",
+                        body: .type(FileUpload.self),
+                        contentType: .multipart(.formData),
+                        response: .type(UserDTO.self),
+                        responseContentType: .application(.json),
+                        auth: .blogAuth
+                    )
+                    .response(statusCode: .ok, description: "Avatar uploaded successfully")
+                    .response(statusCode: .badRequest, description: "Invalid file")
+                
+                avatar.on(.DELETE, "remove", use: self.removeUserAvatar)
+                    .openAPI(
+                        summary: "Remove avatar",
+                        description: "Remove the user's avatar image",
+                        operationId: "removeUserAvatar",
+                        response: .type(UserDTO.self),
+                        responseContentType: .application(.json),
+                        auth: .blogAuth
+                    )
+                    .response(statusCode: .ok, description: "Avatar removed successfully")
+                    .response(statusCode: .notFound, description: "Avatar not found")
+            }
     }
 
     @Sendable

@@ -30,7 +30,7 @@ struct AuthController: RouteCollection {
                         responseContentType: .application(.json)
                     )
                     .response(statusCode: .conflict, body: .type(APIErrorDTO.self), description: "User already exists")
-                
+
                 auth.post("login", use: self.loginUser)
                     .openAPI(
                         summary: "Login user",
@@ -66,7 +66,7 @@ struct AuthController: RouteCollection {
                         auth: .blogAuth
                     )
                     .response(statusCode: .notFound, body: .type(APIErrorDTO.self), description: "User not found")
-                
+
                 me.post("logout", use: self.logoutUser)
                     .openAPI(
                         summary: "Logout user",
@@ -75,7 +75,7 @@ struct AuthController: RouteCollection {
                         auth: .blogAuth
                     )
                     .response(statusCode: .noContent, description: "Successfully logged out")
-                
+
                 me.delete(use: self.deleteUserAccount)
                     .openAPI(
                         summary: "Delete user account",
@@ -84,7 +84,7 @@ struct AuthController: RouteCollection {
                         auth: .blogAuth
                     )
                     .response(statusCode: .noContent, description: "Account deleted successfully")
-                
+
                 let avatar = me.grouped("avatar")
                 avatar.on(.POST, "upload", body: .collect(maxSize: "10mb"), use: self.uploadUserAvatar)
                     .openAPI(
@@ -98,7 +98,7 @@ struct AuthController: RouteCollection {
                         auth: .blogAuth
                     )
                     .response(statusCode: .badRequest, body: .type(APIErrorDTO.self), description: "Invalid file")
-                
+
                 avatar.on(.DELETE, "remove", use: self.removeUserAvatar)
                     .openAPI(
                         summary: "Remove avatar",
@@ -181,7 +181,7 @@ struct AuthController: RouteCollection {
         try await Token.query(on: req.db)
             .filter(\.$user.$id == user.requireID())
             .delete()
-        
+
         return req.noContent(
             message: "User logged out successfully"
         )
@@ -257,7 +257,7 @@ struct AuthController: RouteCollection {
 
             return userDB.toDTO(on: req)
         }
-        
+
         return req.success(
             userDTO,
             message: "Avatar uploaded successfully"
@@ -285,7 +285,7 @@ struct AuthController: RouteCollection {
 
             return userDB.toDTO(on: req)
         }
-        
+
         return req.success(
             userDTO,
             message: "Avatar removed successfully"

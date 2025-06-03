@@ -25,7 +25,7 @@ struct ArticleController: RouteCollection {
                         query: [
                             "q": .string,
                             "page": .integer,
-                            "perPage": .integer
+                            "perPage": .integer,
                         ],
                         response: .type(APIResponse<[ArticleDTO]>.self),
                         responseContentType: .application(.json),
@@ -52,7 +52,11 @@ struct ArticleController: RouteCollection {
                     .response(statusCode: .badRequest, body: .type(APIErrorDTO.self), description: "Invalid input")
 
                 articles
-                    .groupedOpenAPIResponse(statusCode: .notFound, body: .type(APIErrorDTO.self), description: "Article not found")
+                    .groupedOpenAPIResponse(
+                        statusCode: .notFound,
+                        body: .type(APIErrorDTO.self),
+                        description: "Article not found"
+                    )
                     .group(":articleID") { article in
                         article.get(use: self.getArticleById)
                             .openAPI(
@@ -66,7 +70,7 @@ struct ArticleController: RouteCollection {
                                 ],
                                 auth: .blogAuth
                             )
-                        
+
                         article.put(use: self.updateArticle)
                             .openAPI(
                                 summary: "Update article",
@@ -82,7 +86,7 @@ struct ArticleController: RouteCollection {
                                 auth: .blogAuth
                             )
                             .response(statusCode: .badRequest, body: .type(APIErrorDTO.self), description: "Invalid input")
-                        
+
                         article.delete(use: self.deleteArticle)
                             .openAPI(
                                 summary: "Delete article",
@@ -104,11 +108,11 @@ struct ArticleController: RouteCollection {
             page: req.query[Int.self, at: "page"],
             perPage: req.query[Int.self, at: "perPage"]
         )
-        
+
         let searchQuery = req.query[String.self, at: "q"]
-        
+
         var query = Article.query(on: req.db)
-        
+
         if let searchQuery {
             let queryNormalized = searchQuery.lowercased()
             query = query.group(.or) { group in
@@ -116,14 +120,14 @@ struct ArticleController: RouteCollection {
                 group.filter(\.$content ~~ queryNormalized)
             }
         }
-        
+
         let totalItems = try await query.count()
-        
+
         let articles = try await query
-            .range(pagination.offset..<(pagination.offset + pagination.validatedPerPage))
+            .range(pagination.offset ..< (pagination.offset + pagination.validatedPerPage))
             .all()
             .map { $0.toDTO() }
-        
+
         return req.successWithPagination(
             articles,
             currentPage: pagination.validatedPage,
@@ -140,7 +144,7 @@ struct ArticleController: RouteCollection {
 
         let article = try req.content.decode(CreateArticleRequest.self).toModel(with: user.requireID())
         try await article.save(on: req.db)
-        
+
         return req.created(
             article.toDTO(),
             message: "Article created successfully"
@@ -152,7 +156,7 @@ struct ArticleController: RouteCollection {
         guard let article = try await Article.find(req.parameters.get("articleID"), on: req.db) else {
             throw APIError.articleNotFound
         }
-        
+
         return req.success(
             article.toDTO(),
             message: "Article retrieved successfully"
@@ -173,7 +177,7 @@ struct ArticleController: RouteCollection {
         article.content = updatedArticle.content
 
         try await article.save(on: req.db)
-        
+
         return req.success(
             article.toDTO(),
             message: "Article updated successfully"
@@ -186,7 +190,7 @@ struct ArticleController: RouteCollection {
             throw APIError.articleNotFound
         }
         try await article.delete(on: req.db)
-        
+
         return req.noContent(
             message: "Article deleted successfully"
         )

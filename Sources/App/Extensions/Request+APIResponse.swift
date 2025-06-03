@@ -14,7 +14,7 @@ extension Request {
             meta: meta
         )
     }
-    
+
     /// Create a successful API response without data
     func success(
         message: String? = nil,
@@ -26,7 +26,7 @@ extension Request {
             meta: meta
         )
     }
-    
+
     /// Create a created response with data
     func created<T: Codable & Sendable>(
         _ data: T,
@@ -40,7 +40,7 @@ extension Request {
             meta: meta
         )
     }
-    
+
     /// Create a no content response
     func noContent(
         message: String? = "Operation completed successfully"
@@ -50,7 +50,7 @@ extension Request {
             path: self.url.path
         )
     }
-    
+
     /// Create a paginated response
     func successWithPagination<T: Collection>(
         _ data: T,

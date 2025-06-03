@@ -26,7 +26,7 @@ struct CommentController: RouteCollection {
                         operationId: "getArticleComments",
                         query: [
                             "page": .integer,
-                            "perPage": .integer
+                            "perPage": .integer,
                         ],
                         response: .type(APIResponse<[CommentDTO]>.self),
                         responseContentType: .application(.json),
@@ -54,9 +54,13 @@ struct CommentController: RouteCollection {
                         auth: .blogAuth
                     )
                     .response(statusCode: .badRequest, body: .type(APIErrorDTO.self), description: "Invalid input")
-                
+
                 comments
-                    .groupedOpenAPIResponse(statusCode: .notFound, body: .type(APIErrorDTO.self), description: "Comment not found")
+                    .groupedOpenAPIResponse(
+                        statusCode: .notFound,
+                        body: .type(APIErrorDTO.self),
+                        description: "Comment not found"
+                    )
                     .group(":commentID") { comment in
                         comment.get(use: self.getCommentById)
                             .openAPI(
@@ -71,7 +75,7 @@ struct CommentController: RouteCollection {
                                 ],
                                 auth: .blogAuth
                             )
-                        
+
                         comment.put(use: self.updateComment)
                             .openAPI(
                                 summary: "Update comment",
@@ -88,8 +92,12 @@ struct CommentController: RouteCollection {
                                 auth: .blogAuth
                             )
                             .response(statusCode: .badRequest, body: .type(APIErrorDTO.self), description: "Invalid input")
-                            .response(statusCode: .forbidden, body: .type(APIErrorDTO.self), description: "Forbidden - not comment author")
-                        
+                            .response(
+                                statusCode: .forbidden,
+                                body: .type(APIErrorDTO.self),
+                                description: "Forbidden - not comment author"
+                            )
+
                         comment.delete(use: self.deleteComment)
                             .openAPI(
                                 summary: "Delete comment",
@@ -102,7 +110,11 @@ struct CommentController: RouteCollection {
                                 auth: .blogAuth
                             )
                             .response(statusCode: .noContent, description: "Comment deleted successfully")
-                            .response(statusCode: .forbidden, body: .type(APIErrorDTO.self), description: "Forbidden - not comment author")
+                            .response(
+                                statusCode: .forbidden,
+                                body: .type(APIErrorDTO.self),
+                                description: "Forbidden - not comment author"
+                            )
                     }
             }
     }
@@ -112,23 +124,23 @@ struct CommentController: RouteCollection {
         guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
             throw APIError.invalidParameter
         }
-        
+
         let pagination = PaginationRequest(
             page: req.query[Int.self, at: "page"],
             perPage: req.query[Int.self, at: "perPage"]
         )
-        
+
         let query = Comment.query(on: req.db)
             .filter(\.$article.$id == articleID)
             .with(\.$user)
-        
+
         let totalItems = try await query.count()
-        
+
         let comments = try await query
-            .range(pagination.offset..<(pagination.offset + pagination.validatedPerPage))
+            .range(pagination.offset ..< (pagination.offset + pagination.validatedPerPage))
             .all()
             .map { $0.toDTO(on: req) }
-        
+
         return req.successWithPagination(
             comments,
             currentPage: pagination.validatedPage,
@@ -173,7 +185,7 @@ struct CommentController: RouteCollection {
             .first() else {
             throw APIError.commentNotFound
         }
-        
+
         return req.success(
             comment.toDTO(on: req),
             message: "Comment retrieved successfully"
@@ -199,7 +211,7 @@ struct CommentController: RouteCollection {
         }
         comment.content = updatedComment.content
         try await comment.save(on: req.db)
-        
+
         return req.success(
             comment.toDTO(on: req),
             message: "Comment updated successfully"
@@ -216,7 +228,7 @@ struct CommentController: RouteCollection {
             throw APIError.resourceOwnershipRequired
         }
         try await comment.delete(on: req.db)
-        
+
         return req.noContent(
             message: "Comment deleted successfully"
         )

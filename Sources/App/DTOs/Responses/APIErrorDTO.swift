@@ -15,7 +15,7 @@ struct APIErrorDTO: Error, WithExample {
     let path: String
     /// When the error occurred (ISO8601 format)
     let timestamp: String
-    
+
     init(
         status: HTTPStatus,
         error: String,
@@ -28,7 +28,7 @@ struct APIErrorDTO: Error, WithExample {
         self.path = path
         self.timestamp = ISO8601DateFormatter().string(from: Date())
     }
-    
+
     static let example = APIErrorDTO(
         status: .notFound,
         error: "Not Found",

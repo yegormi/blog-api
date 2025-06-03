@@ -19,7 +19,7 @@ struct APIResponse<T: Codable & Sendable>: Content {
     let timestamp: String
     /// Optional metadata about the response
     let meta: ResponseMeta?
-    
+
     init(
         status: HTTPStatus,
         success: Bool = true,
@@ -36,7 +36,6 @@ struct APIResponse<T: Codable & Sendable>: Content {
         self.timestamp = ISO8601DateFormatter().string(from: Date())
         self.meta = meta
     }
-    
 }
 
 /// Response metadata for additional information
@@ -49,7 +48,7 @@ struct ResponseMeta: Codable, Sendable {
     let processingTime: Double?
     /// API version
     let version: String?
-    
+
     init(
         pagination: PaginationMeta? = nil,
         totalCount: Int? = nil,
@@ -79,7 +78,6 @@ struct PaginationMeta: Codable, Sendable {
     let hasPrevious: Bool
 }
 
-
 // MARK: - Convenience Extensions
 
 extension APIResponse {
@@ -99,7 +97,7 @@ extension APIResponse {
             meta: meta
         )
     }
-    
+
     /// Create a successful response without data
     static func success(
         message: String? = nil,
@@ -115,7 +113,7 @@ extension APIResponse {
             meta: meta
         )
     }
-    
+
     /// Create a created response with data
     static func created<U: Codable>(
         data: U,
@@ -132,7 +130,7 @@ extension APIResponse {
             meta: meta
         )
     }
-    
+
     /// Create a no content response
     static func noContent(
         message: String? = "Operation completed successfully",
@@ -150,7 +148,6 @@ extension APIResponse {
 
 /// Empty data structure for responses without data
 struct EmptyData: Codable, Sendable {
-    init() {}
 }
 
 // MARK: - WithExample Conformance
@@ -220,13 +217,13 @@ extension APIResponse where T: Collection, T.Element: Codable & Sendable {
             hasNext: currentPage < totalPages,
             hasPrevious: currentPage > 1
         )
-        
+
         let meta = ResponseMeta(
             pagination: pagination,
             totalCount: totalItems,
             processingTime: processingTime
         )
-        
+
         return APIResponse<T>(
             status: .ok,
             success: true,

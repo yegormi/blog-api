@@ -4,9 +4,8 @@ import VaporToOpenAPI
 
 struct CommentController: RouteCollection {
     func boot(routes: any RoutesBuilder) throws {
-        routes
-            .grouped("articles", ":articleID", "comments")
-            .grouped(JWTMiddleware())
+        routes.grouped(JWTMiddleware())
+            .grouped("articles", ":articleID")
             .group(
                 tags: TagObject(
                     name: "comments",
@@ -17,62 +16,90 @@ struct CommentController: RouteCollection {
                     )
                 )
             ) { comments in
-                
                 comments.get(use: self.index)
                     .openAPI(
                         summary: "Get article comments",
                         description: "Retrieve all comments for a specific article",
+                        operationId: "getArticleComments",
                         response: .type([CommentDTO].self),
                         responseContentType: .application(.json),
+                        links: [
+                            Link("Authorization", in: .request(.header)): Link.UserToken.self,
+                            Link("articleID", in: .path): Link.ArticleID.self,
+                        ],
                         auth: .blogAuth
                     )
                     .response(statusCode: 400, description: "Invalid article ID")
                     .response(statusCode: 401, description: "Unauthorized")
-                
+
                 comments.post(use: self.create)
                     .openAPI(
                         summary: "Create comment",
                         description: "Create a new comment on an article",
+                        operationId: "createComment",
                         body: .type(CommentRequest.self),
                         contentType: .application(.json),
                         response: .type(CommentDTO.self),
                         responseContentType: .application(.json),
+                        links: [
+                            Link("Authorization", in: .request(.header)): Link.UserToken.self,
+                            Link("articleID", in: .path): Link.ArticleID.self,
+                            Link("id", in: .response): Link.CommentID.self,
+                        ],
                         auth: .blogAuth
                     )
                     .response(statusCode: 400, description: "Invalid input")
                     .response(statusCode: 401, description: "Unauthorized")
-                
+
                 comments.group(":commentID") { comment in
                     comment.get(use: self.show)
                         .openAPI(
                             summary: "Get comment by ID",
                             description: "Retrieve a specific comment by its ID",
+                            operationId: "getCommentById",
                             response: .type(CommentDTO.self),
                             responseContentType: .application(.json),
+                            links: [
+                                Link("Authorization", in: .request(.header)): Link.UserToken.self,
+                                Link("articleID", in: .path): Link.ArticleID.self,
+                                Link("commentID", in: .path): Link.CommentID.self,
+                            ],
                             auth: .blogAuth
                         )
                         .response(statusCode: 401, description: "Unauthorized")
                         .response(statusCode: 404, description: "Comment not found")
-                    
+
                     comment.put(use: self.update)
                         .openAPI(
                             summary: "Update comment",
                             description: "Update an existing comment (only by the comment author)",
+                            operationId: "updateComment",
                             body: .type(CommentRequest.self),
                             contentType: .application(.json),
                             response: .type(CommentDTO.self),
                             responseContentType: .application(.json),
+                            links: [
+                                Link("Authorization", in: .request(.header)): Link.UserToken.self,
+                                Link("articleID", in: .path): Link.ArticleID.self,
+                                Link("commentID", in: .path): Link.CommentID.self,
+                            ],
                             auth: .blogAuth
                         )
                         .response(statusCode: 400, description: "Invalid input")
                         .response(statusCode: 401, description: "Unauthorized")
                         .response(statusCode: 403, description: "Forbidden - not comment author")
                         .response(statusCode: 404, description: "Comment not found")
-                    
+
                     comment.delete(use: self.delete)
                         .openAPI(
                             summary: "Delete comment",
                             description: "Delete an existing comment (only by the comment author)",
+                            operationId: "deleteComment",
+                            links: [
+                                Link("Authorization", in: .request(.header)): Link.UserToken.self,
+                                Link("articleID", in: .path): Link.ArticleID.self,
+                                Link("commentID", in: .path): Link.CommentID.self,
+                            ],
                             auth: .blogAuth
                         )
                         .response(statusCode: 204, description: "Comment deleted successfully")
@@ -82,7 +109,7 @@ struct CommentController: RouteCollection {
                 }
             }
     }
-    
+
     @Sendable
     func index(req: Request) async throws -> [CommentDTO] {
         guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
@@ -94,28 +121,28 @@ struct CommentController: RouteCollection {
             .all()
             .map { $0.toDTO(on: req) }
     }
-    
+
     @Sendable
     func create(req: Request) async throws -> CommentDTO {
         let user = try req.auth.require(User.self)
-        
+
         let createComment = try req.content.decode(CommentRequest.self)
         guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
             throw Abort(.badRequest)
         }
         let comment = try Comment(content: createComment.content, articleID: articleID, userID: user.requireID())
         try await comment.save(on: req.db)
-        
+
         guard let savedComment = try await Comment.query(on: req.db)
             .filter(\.$id == comment.id!)
             .with(\.$user)
             .first() else {
             throw Abort(.internalServerError)
         }
-        
+
         return savedComment.toDTO(on: req)
     }
-    
+
     @Sendable
     func show(req: Request) async throws -> CommentDTO {
         guard let commentId = req.parameters.get("commentID", as: UUID.self) else {
@@ -129,11 +156,11 @@ struct CommentController: RouteCollection {
         }
         return comment.toDTO(on: req)
     }
-    
+
     @Sendable
     func update(req: Request) async throws -> CommentDTO {
         let user = try req.auth.require(User.self)
-        
+
         let updatedComment = try req.content.decode(CommentRequest.self)
         guard let commentId = req.parameters.get("commentID", as: UUID.self) else {
             throw Abort(.notFound)
@@ -151,7 +178,7 @@ struct CommentController: RouteCollection {
         try await comment.save(on: req.db)
         return comment.toDTO(on: req)
     }
-    
+
     @Sendable
     func delete(req: Request) async throws -> HTTPStatus {
         let user = try req.auth.require(User.self)

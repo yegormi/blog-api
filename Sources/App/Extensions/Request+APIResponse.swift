@@ -57,8 +57,7 @@ extension Request {
         currentPage: Int,
         perPage: Int,
         totalItems: Int,
-        message: String? = nil,
-        processingTime: Double? = nil
+        message: String? = nil
     ) -> APIResponse<T> where T.Element: Codable & Sendable {
         APIResponse<T>.successWithPagination(
             data: data,
@@ -66,8 +65,7 @@ extension Request {
             perPage: perPage,
             totalItems: totalItems,
             message: message,
-            path: self.url.path,
-            processingTime: processingTime
+            path: self.url.path
         )
     }
 }

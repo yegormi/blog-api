@@ -1,8 +1,11 @@
+import SwiftOpenAPI
 import Vapor
+import VaporToOpenAPI
 
-struct UserDTO: Content {
+/// User data transfer object
+@OpenAPIDescriptable
+struct UserDTO: Content, WithExample {
+    /// Unique identifier for the user
     let id: UUID?
-    let email: String
     let username: String
-    let avatarUrl: String?
 }

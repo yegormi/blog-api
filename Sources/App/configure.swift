@@ -5,12 +5,18 @@ import Leaf
 import NIOSSL
 import SotoCore
 import SotoS3
+@preconcurrency import SwiftOpenAPI
 import Vapor
 
-// configures your application
 public func configure(_ app: Application) async throws {
-    // uncomment to serve files from /Public folder
-    // app.middleware.use(FileMiddleware(publicDirectory: app.directory.publicDirectory))
+    app.middleware.use(
+        FileMiddleware(
+            publicDirectory: app.directory.publicDirectory,
+            defaultFile: "index.html"
+        )
+    )
+
+    DateEncodingFormat.default = .dateTime
 
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -49,7 +55,7 @@ public func configure(_ app: Application) async throws {
     app.migrations.add(CreateComment())
 
     guard let jwtSecret = Environment.get("JWT_SECRET") else {
-        fatalError("JWT_SECRET environment variable is not set")
+        preconditionFailure("JWT_SECRET environment variable is not set")
     }
     await app.jwt.keys.add(hmac: .init(from: jwtSecret), digestAlgorithm: .sha256)
 

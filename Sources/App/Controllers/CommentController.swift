@@ -1,25 +1,114 @@
 import Fluent
 import Vapor
+import VaporToOpenAPI
 
 struct CommentController: RouteCollection {
     func boot(routes: any RoutesBuilder) throws {
-        let comments = routes
-            .grouped("articles", ":articleID", "comments")
+        routes
             .grouped(JWTMiddleware())
+            .groupedOpenAPIResponse(statusCode: .unauthorized, description: "Unauthorized")
+            .groupedOpenAPIResponse(statusCode: .notFound, description: "Article not found")
+            .grouped("articles", ":articleID")
+            .group(
+                tags: TagObject(
+                    name: "comments",
+                    description: "Article comment management",
+                    externalDocs: ExternalDocumentationObject(
+                        description: "Find out more about comments",
+                        url: URL(string: "https://blog-api.com/docs/comments")!
+                    )
+                )
+            ) { comments in
+                comments.get(use: self.getArticleComments)
+                    .openAPI(
+                        summary: "Get article comments",
+                        description: "Retrieve all comments for a specific article",
+                        operationId: "getArticleComments",
+                        response: .type([CommentDTO].self),
+                        responseContentType: .application(.json),
+                        links: [
+                            Link("articleID", in: .path): Link.ArticleID.self,
+                            Link("id", in: .response): Link.CommentID.self,
+                        ],
+                        auth: .blogAuth
+                    )
+                    .response(statusCode: .ok, description: "Comments retrieved successfully")
 
-        comments.get(use: self.index)
-        comments.post(use: self.create)
-        comments.group(":commentID") { comment in
-            comment.get(use: self.show)
-            comment.put(use: self.update)
-            comment.delete(use: self.delete)
-        }
+                comments.post(use: self.createComment)
+                    .openAPI(
+                        summary: "Create comment",
+                        description: "Create a new comment on an article",
+                        operationId: "createComment",
+                        body: .type(CommentRequest.self),
+                        contentType: .application(.json),
+                        response: .type(CommentDTO.self),
+                        responseContentType: .application(.json),
+                        links: [
+                            Link("articleID", in: .path): Link.ArticleID.self,
+                            Link("id", in: .response): Link.CommentID.self,
+                        ],
+                        auth: .blogAuth
+                    )
+                    .response(statusCode: .created, description: "Comment created successfully")
+                    .response(statusCode: .notFound, description: "Article not found")
+                
+                comments
+                    .groupedOpenAPIResponse(statusCode: .notFound, description: "Comment not found")
+                    .group(":commentID") { comment in
+                        comment.get(use: self.getCommentById)
+                            .openAPI(
+                                summary: "Get comment by ID",
+                                description: "Retrieve a specific comment by its ID",
+                                operationId: "getCommentById",
+                                response: .type(CommentDTO.self),
+                                responseContentType: .application(.json),
+                                links: [
+                                    Link("articleID", in: .path): Link.ArticleID.self,
+                                    Link("commentID", in: .path): Link.CommentID.self,
+                                ],
+                                auth: .blogAuth
+                            )
+                            .response(statusCode: .ok, description: "Comment retrieved successfully")
+                        
+                        comment.put(use: self.updateComment)
+                            .openAPI(
+                                summary: "Update comment",
+                                description: "Update an existing comment (only by the comment author)",
+                                operationId: "updateComment",
+                                body: .type(CommentRequest.self),
+                                contentType: .application(.json),
+                                response: .type(CommentDTO.self),
+                                responseContentType: .application(.json),
+                                links: [
+                                    Link("articleID", in: .path): Link.ArticleID.self,
+                                    Link("commentID", in: .path): Link.CommentID.self,
+                                ],
+                                auth: .blogAuth
+                            )
+                            .response(statusCode: .ok, description: "Comment updated successfully")
+                            .response(statusCode: .forbidden, description: "Forbidden - not comment author")
+                        
+                        comment.delete(use: self.deleteComment)
+                            .openAPI(
+                                summary: "Delete comment",
+                                description: "Delete an existing comment (only by the comment author)",
+                                operationId: "deleteComment",
+                                links: [
+                                    Link("articleID", in: .path): Link.ArticleID.self,
+                                    Link("commentID", in: .path): Link.CommentID.self,
+                                ],
+                                auth: .blogAuth
+                            )
+                            .response(statusCode: .noContent, description: "Comment deleted successfully")
+                            .response(statusCode: .forbidden, description: "Forbidden - not comment author")
+                    }
+            }
     }
 
     @Sendable
-    func index(req: Request) async throws -> [CommentDTO] {
+    func getArticleComments(req: Request) async throws -> [CommentDTO] {
         guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
-            throw Abort(.badRequest)
+            throw Abort(.notFound)
         }
         return try await Comment.query(on: req.db)
             .filter(\.$article.$id == articleID)
@@ -29,12 +118,12 @@ struct CommentController: RouteCollection {
     }
 
     @Sendable
-    func create(req: Request) async throws -> CommentDTO {
+    func createComment(req: Request) async throws -> CommentDTO {
         let user = try req.auth.require(User.self)
 
         let createComment = try req.content.decode(CommentRequest.self)
         guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
-            throw Abort(.badRequest)
+            throw Abort(.notFound)
         }
         let comment = try Comment(content: createComment.content, articleID: articleID, userID: user.requireID())
         try await comment.save(on: req.db)
@@ -50,7 +139,7 @@ struct CommentController: RouteCollection {
     }
 
     @Sendable
-    func show(req: Request) async throws -> CommentDTO {
+    func getCommentById(req: Request) async throws -> CommentDTO {
         guard let commentId = req.parameters.get("commentID", as: UUID.self) else {
             throw Abort(.notFound)
         }
@@ -64,7 +153,7 @@ struct CommentController: RouteCollection {
     }
 
     @Sendable
-    func update(req: Request) async throws -> CommentDTO {
+    func updateComment(req: Request) async throws -> CommentDTO {
         let user = try req.auth.require(User.self)
 
         let updatedComment = try req.content.decode(CommentRequest.self)
@@ -86,7 +175,7 @@ struct CommentController: RouteCollection {
     }
 
     @Sendable
-    func delete(req: Request) async throws -> HTTPStatus {
+    func deleteComment(req: Request) async throws -> HTTPStatus {
         let user = try req.auth.require(User.self)
         guard let comment = try await Comment.find(req.parameters.get("commentID"), on: req.db) else {
             throw Abort(.notFound)

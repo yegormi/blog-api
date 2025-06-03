@@ -1,9 +1,9 @@
-import Vapor
 import SwiftOpenAPI
+import Vapor
 import VaporToOpenAPI
 
-@OpenAPIDescriptable
 /// Request payload for user registration
+@OpenAPIDescriptable
 struct RegisterRequest: Content, Validatable, WithExample {
     /// Desired username (minimum 2 characters)
     let username: String
@@ -17,7 +17,7 @@ struct RegisterRequest: Content, Validatable, WithExample {
         validations.add("email", as: String.self, is: .email)
         validations.add("password", as: String.self, is: .count(8...))
     }
-    
+
     static let example = RegisterRequest(
         username: "newuser",
         email: "newuser@example.com",

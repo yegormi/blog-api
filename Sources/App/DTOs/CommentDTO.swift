@@ -1,9 +1,9 @@
-import Vapor
 import SwiftOpenAPI
+import Vapor
 import VaporToOpenAPI
 
-@OpenAPIDescriptable
 /// Comment data transfer object
+@OpenAPIDescriptable
 struct CommentDTO: Content, WithExample {
     /// Unique identifier for the comment
     let id: UUID?
@@ -21,7 +21,7 @@ struct CommentDTO: Content, WithExample {
         model.content = self.content
         return model
     }
-    
+
     static let example = CommentDTO(
         id: UUID(),
         user: UserDTO.example,

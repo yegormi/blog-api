@@ -5,8 +5,8 @@ import Leaf
 import NIOSSL
 import SotoCore
 import SotoS3
-import Vapor
 @preconcurrency import SwiftOpenAPI
+import Vapor
 
 public func configure(_ app: Application) async throws {
     app.middleware.use(
@@ -15,7 +15,7 @@ public func configure(_ app: Application) async throws {
             defaultFile: "index.html"
         )
     )
-    
+
     DateEncodingFormat.default = .dateTime
 
     let encoder = JSONEncoder()

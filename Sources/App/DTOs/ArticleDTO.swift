@@ -1,9 +1,9 @@
-import Vapor
 import SwiftOpenAPI
+import Vapor
 import VaporToOpenAPI
 
-@OpenAPIDescriptable
 /// Article data transfer object
+@OpenAPIDescriptable
 struct ArticleDTO: Content, WithExample {
     /// Unique identifier for the article
     var id: UUID?
@@ -32,7 +32,7 @@ struct ArticleDTO: Content, WithExample {
         }
         return model
     }
-    
+
     static let example = ArticleDTO(
         id: UUID(),
         title: "Sample Article",

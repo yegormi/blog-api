@@ -1,9 +1,9 @@
-import Vapor
 import SwiftOpenAPI
+import Vapor
 import VaporToOpenAPI
 
-@OpenAPIDescriptable
 /// User data transfer object
+@OpenAPIDescriptable
 struct UserDTO: Content, WithExample {
     /// Unique identifier for the user
     let id: UUID?
@@ -13,7 +13,7 @@ struct UserDTO: Content, WithExample {
     let username: String
     /// URL to user's avatar image
     let avatarUrl: String?
-    
+
     static let example = UserDTO(
         id: UUID(),
         email: "user@example.com",

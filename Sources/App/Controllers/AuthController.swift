@@ -8,7 +8,7 @@ struct AuthController: RouteCollection {
         let authenticated = routes.grouped(JWTMiddleware())
 
         routes
-            .groupedOpenAPIResponse(statusCode: .badRequest, description: "Invalid input")
+            .groupedOpenAPIResponse(statusCode: .badRequest, body: .type(APIErrorDTO.self), description: "Invalid input")
             .group(
                 tags: TagObject(
                     name: "auth",
@@ -29,7 +29,7 @@ struct AuthController: RouteCollection {
                         response: .type(TokenDTO.self),
                         responseContentType: .application(.json)
                     )
-                    .response(statusCode: .conflict, description: "User already exists")
+                    .response(statusCode: .conflict, body: .type(APIErrorDTO.self), description: "User already exists")
                 
                 auth.post("login", use: self.loginUser)
                     .openAPI(
@@ -41,11 +41,11 @@ struct AuthController: RouteCollection {
                         response: .type(TokenDTO.self),
                         responseContentType: .application(.json)
                     )
-                    .response(statusCode: .unauthorized, description: "Invalid credentials")
+                    .response(statusCode: .unauthorized, body: .type(APIErrorDTO.self), description: "Invalid credentials")
             }
 
         authenticated
-            .groupedOpenAPIResponse(statusCode: .unauthorized, description: "Unauthorized")
+            .groupedOpenAPIResponse(statusCode: .unauthorized, body: .type(APIErrorDTO.self), description: "Unauthorized")
             .group(
                 tags: TagObject(
                     name: "me",
@@ -65,7 +65,7 @@ struct AuthController: RouteCollection {
                         responseContentType: .application(.json),
                         auth: .blogAuth
                     )
-                    .response(statusCode: .notFound, description: "User not found")
+                    .response(statusCode: .notFound, body: .type(APIErrorDTO.self), description: "User not found")
                 
                 me.post("logout", use: self.logoutUser)
                     .openAPI(
@@ -97,7 +97,7 @@ struct AuthController: RouteCollection {
                         responseContentType: .application(.json),
                         auth: .blogAuth
                     )
-                    .response(statusCode: .badRequest, description: "Invalid file")
+                    .response(statusCode: .badRequest, body: .type(APIErrorDTO.self), description: "Invalid file")
                 
                 avatar.on(.DELETE, "remove", use: self.removeUserAvatar)
                     .openAPI(
@@ -108,7 +108,7 @@ struct AuthController: RouteCollection {
                         responseContentType: .application(.json),
                         auth: .blogAuth
                     )
-                    .response(statusCode: .notFound, description: "Avatar not found")
+                    .response(statusCode: .notFound, body: .type(APIErrorDTO.self), description: "Avatar not found")
             }
     }
 
@@ -123,13 +123,13 @@ struct AuthController: RouteCollection {
         if try await User.query(on: req.db)
             .filter(\.$username == normalizedUsername)
             .first() != nil {
-            throw Abort(.conflict, reason: "A user with this username already exists")
+            throw APIErrorDTO.conflict(message: "A user with this username already exists", path: req.url.path)
         }
 
         if try await User.query(on: req.db)
             .filter(\.$email == normalizedEmail)
             .first() != nil {
-            throw Abort(.conflict, reason: "A user with this email already exists")
+            throw APIErrorDTO.conflict(message: "A user with this email already exists", path: req.url.path)
         }
 
         let user = try User(
@@ -155,11 +155,11 @@ struct AuthController: RouteCollection {
             .with(\.$avatar)
             .first()
         else {
-            throw Abort(.unauthorized, reason: "Invalid email")
+            throw APIErrorDTO.invalidCredentials(path: req.url.path)
         }
 
         guard try Bcrypt.verify(loginRequest.password, created: user.passwordHash) else {
-            throw Abort(.unauthorized, reason: "Invalid password")
+            throw APIErrorDTO.invalidCredentials(path: req.url.path)
         }
 
         let token = try await user.generateToken(on: req)
@@ -201,7 +201,7 @@ struct AuthController: RouteCollection {
             .with(\.$avatar)
             .first()
         else {
-            throw Abort(.badRequest, reason: "No user found")
+            throw APIErrorDTO.userNotFound(path: req.url.path)
         }
 
         return userDB.toDTO(on: req)
@@ -213,7 +213,7 @@ struct AuthController: RouteCollection {
         let file = try req.content.decode(FileUpload.self).file
 
         guard let fileExtension = file.extension else {
-            throw Abort(.badRequest, reason: "Malformed file")
+            throw APIErrorDTO.badRequest(message: "Malformed file", path: req.url.path)
         }
 
         let fileName = "\(UUID().uuidString.lowercased()).\(fileExtension)"
@@ -238,7 +238,7 @@ struct AuthController: RouteCollection {
                 .with(\.$avatar)
                 .first()
             else {
-                throw Abort(.badRequest, reason: "No user found")
+                throw APIErrorDTO.userNotFound(path: req.url.path)
             }
 
             return userDB.toDTO(on: req)
@@ -251,7 +251,7 @@ struct AuthController: RouteCollection {
 
         return try await req.db.transaction { transaction in
             guard let avatar = try await user.$avatar.get(on: transaction) else {
-                throw Abort(.notFound, reason: "User does not have an avatar")
+                throw APIErrorDTO.badRequest(message: "User does not have an avatar", path: req.url.path)
             }
             try await req.fileStorage.deleteFile(key: avatar.key)
             try await avatar.delete(on: transaction)
@@ -261,7 +261,7 @@ struct AuthController: RouteCollection {
                 .with(\.$avatar)
                 .first()
             else {
-                throw Abort(.badRequest, reason: "No user found")
+                throw APIErrorDTO.userNotFound(path: req.url.path)
             }
 
             return userDB.toDTO(on: req)

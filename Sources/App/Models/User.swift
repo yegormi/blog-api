@@ -53,7 +53,7 @@ extension User {
 
 extension User {
     func generateToken(on req: Request) async throws -> Token {
-        guard let id = self.id else { throw APIError.userNotFound }
+        guard let id = self.id else { throw APIErrorDTO.userNotFound(path: req.url.path) }
 
         let expirationTime = Date().addingTimeInterval(1 * 60 * 60) // 1 hour
 

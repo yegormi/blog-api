@@ -45,10 +45,10 @@ struct ArticleController: RouteCollection {
                         ],
                         auth: .blogAuth
                     )
-                    .response(statusCode: .badRequest, description: "Invalid input")
+                    .response(statusCode: .badRequest, body: .type(APIErrorDTO.self), description: "Invalid input")
 
                 articles
-                    .groupedOpenAPIResponse(statusCode: .notFound, description: "Article not found")
+                    .groupedOpenAPIResponse(statusCode: .notFound, body: .type(APIErrorDTO.self), description: "Article not found")
                     .group(":articleID") { article in
                         article.get(use: self.getArticleById)
                             .openAPI(
@@ -77,7 +77,7 @@ struct ArticleController: RouteCollection {
                                 ],
                                 auth: .blogAuth
                             )
-                            .response(statusCode: .badRequest, description: "Invalid input")
+                            .response(statusCode: .badRequest, body: .type(APIErrorDTO.self), description: "Invalid input")
                         
                         article.delete(use: self.deleteArticle)
                             .openAPI(
@@ -125,7 +125,7 @@ struct ArticleController: RouteCollection {
     @Sendable
     func getArticleById(req: Request) async throws -> ArticleDTO {
         guard let article = try await Article.find(req.parameters.get("articleID"), on: req.db) else {
-            throw APIError.articleNotFound
+            throw APIErrorDTO.articleNotFound(path: req.url.path)
         }
         return article.toDTO()
     }
@@ -137,7 +137,7 @@ struct ArticleController: RouteCollection {
         let updatedArticle = try req.content.decode(UpdateArticleRequest.self).toModel(with: user.requireID())
 
         guard let article = try await Article.find(req.parameters.get("articleID"), on: req.db) else {
-            throw APIError.articleNotFound
+            throw APIErrorDTO.articleNotFound(path: req.url.path)
         }
 
         article.title = updatedArticle.title
@@ -150,7 +150,7 @@ struct ArticleController: RouteCollection {
     @Sendable
     func deleteArticle(req: Request) async throws -> HTTPStatus {
         guard let article = try await Article.find(req.parameters.get("articleID"), on: req.db) else {
-            throw APIError.articleNotFound
+            throw APIErrorDTO.articleNotFound(path: req.url.path)
         }
         try await article.delete(on: req.db)
         return .noContent

@@ -7,10 +7,17 @@ import VaporToOpenAPI
 struct UserDTO: Content, WithExample {
     /// Unique identifier for the user
     let id: UUID?
-    /// Email associated with the user
+    /// User's email address
     let email: String
-    /// Unique username of the user
+    /// User's username
     let username: String
-    /// Image, that could be uploaded and stored for user (Optional)
+    /// URL to user's avatar image
     let avatarUrl: String?
+
+    static let example = UserDTO(
+        id: UUID(),
+        email: "user@example.com",
+        username: "johndoe",
+        avatarUrl: "https://example.com/avatar.jpg"
+    )
 }

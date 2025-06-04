@@ -2,7 +2,13 @@ import Fluent
 import Vapor
 import VaporToOpenAPI
 
-struct ArticleController: RouteCollection {
+struct ArticleController: RouteCollection, Sendable {
+    private let articleService: any ArticleServiceProtocol
+    
+    init(articleService: any ArticleServiceProtocol) {
+        self.articleService = articleService
+    }
+    
     func boot(routes: any RoutesBuilder) throws {
         routes
             .grouped(JWTMiddleware())
@@ -104,31 +110,16 @@ struct ArticleController: RouteCollection {
             page: req.query[Int.self, at: "page"],
             perPage: req.query[Int.self, at: "perPage"]
         )
-
+        
         let searchQuery = req.query[String.self, at: "q"]
-
-        var query = Article.query(on: req.db)
-
-        if let searchQuery {
-            let queryNormalized = searchQuery.lowercased()
-            query = query.group(.or) { group in
-                group.filter(\.$title ~~ queryNormalized)
-                group.filter(\.$content ~~ queryNormalized)
-            }
-        }
-
-        let totalItems = try await query.count()
-
-        let articles = try await query
-            .range(pagination.offset ..< (pagination.offset + pagination.validatedPerPage))
-            .all()
-            .map { $0.toDTO() }
-
+        
+        let result = try await articleService.getAllArticles(pagination: pagination, searchQuery: searchQuery, on: req)
+        
         return req.successWithPagination(
-            articles,
+            result.items,
             currentPage: pagination.validatedPage,
             perPage: pagination.validatedPerPage,
-            totalItems: totalItems,
+            totalItems: result.totalItems,
             message: "Articles retrieved successfully"
         )
     }
@@ -137,24 +128,26 @@ struct ArticleController: RouteCollection {
     func createArticle(req: Request) async throws -> APIResponse<ArticleDTO> {
         try CreateArticleRequest.validate(content: req)
         let user = try req.auth.require(User.self)
-
-        let article = try req.content.decode(CreateArticleRequest.self).toModel(with: user.requireID())
-        try await article.save(on: req.db)
-
+        let request = try req.content.decode(CreateArticleRequest.self)
+        
+        let articleDTO = try await articleService.createArticle(request: request, user: user, on: req)
+        
         return req.created(
-            article.toDTO(),
+            articleDTO,
             message: "Article created successfully"
         )
     }
 
     @Sendable
     func getArticleById(req: Request) async throws -> APIResponse<ArticleDTO> {
-        guard let article = try await Article.find(req.parameters.get("articleID"), on: req.db) else {
-            throw APIError.articleNotFound
+        guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
+            throw APIError.invalidParameter
         }
-
+        
+        let articleDTO = try await articleService.getArticleById(id: articleID, on: req)
+        
         return req.success(
-            article.toDTO(),
+            articleDTO,
             message: "Article retrieved successfully"
         )
     }
@@ -162,31 +155,28 @@ struct ArticleController: RouteCollection {
     @Sendable
     func updateArticle(req: Request) async throws -> APIResponse<ArticleDTO> {
         let user = try req.auth.require(User.self)
-
-        let updatedArticle = try req.content.decode(UpdateArticleRequest.self).toModel(with: user.requireID())
-
-        guard let article = try await Article.find(req.parameters.get("articleID"), on: req.db) else {
-            throw APIError.articleNotFound
+        let request = try req.content.decode(UpdateArticleRequest.self)
+        
+        guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
+            throw APIError.invalidParameter
         }
-
-        article.title = updatedArticle.title
-        article.content = updatedArticle.content
-
-        try await article.save(on: req.db)
-
+        
+        let articleDTO = try await articleService.updateArticle(id: articleID, request: request, user: user, on: req)
+        
         return req.success(
-            article.toDTO(),
+            articleDTO,
             message: "Article updated successfully"
         )
     }
 
     @Sendable
     func deleteArticle(req: Request) async throws -> APIResponse<EmptyData> {
-        guard let article = try await Article.find(req.parameters.get("articleID"), on: req.db) else {
-            throw APIError.articleNotFound
+        guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
+            throw APIError.invalidParameter
         }
-        try await article.delete(on: req.db)
-
+        
+        try await articleService.deleteArticle(id: articleID, on: req)
+        
         return req.noContent(
             message: "Article deleted successfully"
         )

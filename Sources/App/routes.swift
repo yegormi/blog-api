@@ -14,7 +14,20 @@ func routes(_ app: Application) throws {
     .excludeFromOpenAPI()
 
     try app.register(collection: OpenAPIController())
-    try app.register(collection: AuthController())
-    try app.register(collection: ArticleController())
-    try app.register(collection: CommentController())
+    try app.register(
+        collection: AuthController(
+            authService: app.authService,
+            userService: app.userService
+        )
+    )
+    try app.register(
+        collection: ArticleController(
+            articleService: app.articleService
+        )
+    )
+    try app.register(
+        collection: CommentController(
+            commentService: app.commentService
+        )
+    )
 }

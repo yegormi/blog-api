@@ -2,7 +2,13 @@ import Fluent
 import Vapor
 import VaporToOpenAPI
 
-struct CommentController: RouteCollection {
+struct CommentController: RouteCollection, Sendable {
+    private let commentService: any CommentServiceProtocol
+    
+    init(commentService: any CommentServiceProtocol) {
+        self.commentService = commentService
+    }
+    
     func boot(routes: any RoutesBuilder) throws {
         routes
             .grouped(JWTMiddleware())
@@ -120,28 +126,19 @@ struct CommentController: RouteCollection {
         guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
             throw APIError.invalidParameter
         }
-
+        
         let pagination = PaginationRequest(
             page: req.query[Int.self, at: "page"],
             perPage: req.query[Int.self, at: "perPage"]
         )
-
-        let query = Comment.query(on: req.db)
-            .filter(\.$article.$id == articleID)
-            .with(\.$user)
-
-        let totalItems = try await query.count()
-
-        let comments = try await query
-            .range(pagination.offset ..< (pagination.offset + pagination.validatedPerPage))
-            .all()
-            .map { $0.toDTO(on: req) }
-
+        
+        let result = try await commentService.getArticleComments(articleID: articleID, pagination: pagination, on: req)
+        
         return req.successWithPagination(
-            comments,
+            result.items,
             currentPage: pagination.validatedPage,
             perPage: pagination.validatedPerPage,
-            totalItems: totalItems,
+            totalItems: result.totalItems,
             message: "Article comments retrieved successfully"
         )
     }
@@ -149,23 +146,16 @@ struct CommentController: RouteCollection {
     @Sendable
     func createComment(req: Request) async throws -> APIResponse<CommentDTO> {
         let user = try req.auth.require(User.self)
-
-        let createComment = try req.content.decode(CommentRequest.self)
+        let request = try req.content.decode(CommentRequest.self)
+        
         guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
             throw APIError.invalidParameter
         }
-        let comment = try Comment(content: createComment.content, articleID: articleID, userID: user.requireID())
-        try await comment.save(on: req.db)
-
-        guard let savedComment = try await Comment.query(on: req.db)
-            .filter(\.$id == comment.id!)
-            .with(\.$user)
-            .first() else {
-            throw APIError.databaseError
-        }
-
+        
+        let commentDTO = try await commentService.createComment(request: request, articleID: articleID, user: user, on: req)
+        
         return req.created(
-            savedComment.toDTO(on: req),
+            commentDTO,
             message: "Comment created successfully"
         )
     }
@@ -175,15 +165,11 @@ struct CommentController: RouteCollection {
         guard let commentId = req.parameters.get("commentID", as: UUID.self) else {
             throw APIError.invalidParameter
         }
-        guard let comment = try await Comment.query(on: req.db)
-            .filter(\.$id == commentId)
-            .with(\.$user)
-            .first() else {
-            throw APIError.commentNotFound
-        }
-
+        
+        let commentDTO = try await commentService.getCommentById(id: commentId, on: req)
+        
         return req.success(
-            comment.toDTO(on: req),
+            commentDTO,
             message: "Comment retrieved successfully"
         )
     }
@@ -191,25 +177,16 @@ struct CommentController: RouteCollection {
     @Sendable
     func updateComment(req: Request) async throws -> APIResponse<CommentDTO> {
         let user = try req.auth.require(User.self)
-
-        let updatedComment = try req.content.decode(CommentRequest.self)
+        let request = try req.content.decode(CommentRequest.self)
+        
         guard let commentId = req.parameters.get("commentID", as: UUID.self) else {
             throw APIError.invalidParameter
         }
-        guard let comment = try await Comment.query(on: req.db)
-            .filter(\.$id == commentId)
-            .with(\.$user)
-            .first() else {
-            throw APIError.commentNotFound
-        }
-        guard try comment.$user.id == user.requireID() else {
-            throw APIError.resourceOwnershipRequired
-        }
-        comment.content = updatedComment.content
-        try await comment.save(on: req.db)
-
+        
+        let commentDTO = try await commentService.updateComment(id: commentId, request: request, user: user, on: req)
+        
         return req.success(
-            comment.toDTO(on: req),
+            commentDTO,
             message: "Comment updated successfully"
         )
     }
@@ -217,14 +194,13 @@ struct CommentController: RouteCollection {
     @Sendable
     func deleteComment(req: Request) async throws -> APIResponse<EmptyData> {
         let user = try req.auth.require(User.self)
-        guard let comment = try await Comment.find(req.parameters.get("commentID"), on: req.db) else {
-            throw APIError.commentNotFound
+        
+        guard let commentId = req.parameters.get("commentID", as: UUID.self) else {
+            throw APIError.invalidParameter
         }
-        guard try comment.$user.id == user.requireID() else {
-            throw APIError.resourceOwnershipRequired
-        }
-        try await comment.delete(on: req.db)
-
+        
+        try await commentService.deleteComment(id: commentId, user: user, on: req)
+        
         return req.noContent(
             message: "Comment deleted successfully"
         )

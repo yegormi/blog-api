@@ -3,7 +3,15 @@ import JWT
 import Vapor
 import VaporToOpenAPI
 
-struct AuthController: RouteCollection {
+struct AuthController: RouteCollection, Sendable {
+    private let authService: any AuthServiceProtocol
+    private let userService: any UserServiceProtocol
+    
+    init(authService: any AuthServiceProtocol, userService: any UserServiceProtocol) {
+        self.authService = authService
+        self.userService = userService
+    }
+    
     func boot(routes: any RoutesBuilder) throws {
         let authenticated = routes.grouped(JWTMiddleware())
 
@@ -112,34 +120,11 @@ struct AuthController: RouteCollection {
     func registerUser(req: Request) async throws -> APIResponse<TokenDTO> {
         try RegisterRequest.validate(content: req)
         let request = try req.content.decode(RegisterRequest.self)
-
-        let normalizedUsername = request.username.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        let normalizedEmail = request.email.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-
-        if try await User.query(on: req.db)
-            .filter(\.$username == normalizedUsername)
-            .first() != nil {
-            throw APIError.usernameAlreadyExists
-        }
-
-        if try await User.query(on: req.db)
-            .filter(\.$email == normalizedEmail)
-            .first() != nil {
-            throw APIError.emailAlreadyExists
-        }
-
-        let user = try User(
-            username: request.username,
-            email: request.email,
-            passwordHash: Bcrypt.hash(request.password)
-        )
-        try await user.save(on: req.db)
-
-        let token = try await user.generateToken(on: req)
-        try await token.save(on: req.db)
-
+        
+        let tokenDTO = try await authService.register(request: request, on: req)
+        
         return req.created(
-            token.toDTO(with: user.toDTO(on: req)),
+            tokenDTO,
             message: "User registered successfully"
         )
     }
@@ -148,24 +133,11 @@ struct AuthController: RouteCollection {
     func loginUser(req: Request) async throws -> APIResponse<TokenDTO> {
         try LoginRequest.validate(content: req)
         let loginRequest = try req.content.decode(LoginRequest.self)
-
-        guard let user = try await User.query(on: req.db)
-            .filter(\.$email == loginRequest.email)
-            .with(\.$avatar)
-            .first()
-        else {
-            throw APIError.invalidCredentials
-        }
-
-        guard try Bcrypt.verify(loginRequest.password, created: user.passwordHash) else {
-            throw APIError.invalidCredentials
-        }
-
-        let token = try await user.generateToken(on: req)
-        try await token.save(on: req.db)
-
+        
+        let tokenDTO = try await authService.login(request: loginRequest, on: req)
+        
         return req.success(
-            token.toDTO(with: user.toDTO(on: req)),
+            tokenDTO,
             message: "User logged in successfully"
         )
     }
@@ -173,11 +145,9 @@ struct AuthController: RouteCollection {
     @Sendable
     func logoutUser(req: Request) async throws -> APIResponse<EmptyData> {
         let user = try req.auth.require(User.self)
-        /// Invalidate all tokens for the user or the specific token used for the request
-        try await Token.query(on: req.db)
-            .filter(\.$user.$id == user.requireID())
-            .delete()
-
+        
+        try await authService.logout(user: user, on: req)
+        
         return req.noContent(
             message: "User logged out successfully"
         )
@@ -186,14 +156,9 @@ struct AuthController: RouteCollection {
     @Sendable
     func deleteUserAccount(req: Request) async throws -> APIResponse<EmptyData> {
         let user = try req.auth.require(User.self)
-
-        try await req.db.transaction { transaction in
-            if let avatar = try await user.$avatar.get(on: transaction) {
-                try await req.fileStorage.deleteFile(key: avatar.key)
-            }
-            try await user.delete(on: transaction)
-        }
-
+        
+        try await authService.deleteUserAccount(user: user, on: req)
+        
         return req.noContent(
             message: "User account deleted successfully"
         )
@@ -202,17 +167,11 @@ struct AuthController: RouteCollection {
     @Sendable
     func getUserProfile(req: Request) async throws -> APIResponse<UserDTO> {
         let user = try req.auth.require(User.self)
-
-        guard let userDB = try await User.query(on: req.db)
-            .filter(\.$id == user.requireID())
-            .with(\.$avatar)
-            .first()
-        else {
-            throw APIError.userNotFound
-        }
-
+        
+        let userDTO = try await authService.getUserProfile(user: user, on: req)
+        
         return req.success(
-            userDB.toDTO(on: req),
+            userDTO,
             message: "User profile retrieved successfully"
         )
     }
@@ -220,40 +179,10 @@ struct AuthController: RouteCollection {
     @Sendable
     func uploadUserAvatar(req: Request) async throws -> APIResponse<UserDTO> {
         let user = try req.auth.require(User.self)
-        let file = try req.content.decode(FileUpload.self).file
-
-        guard let fileExtension = file.extension else {
-            throw APIError.invalidFileFormat
-        }
-
-        let fileName = "\(UUID().uuidString.lowercased()).\(fileExtension)"
-        let key = "avatars/\(fileName)"
-
-        let userDTO = try await req.db.transaction { transaction in
-            /// Delete old avatar if it exists
-            if let existingAvatar = try await user.$avatar.get(on: transaction) {
-                try await req.fileStorage.deleteFile(key: existingAvatar.key)
-                try await existingAvatar.delete(on: transaction)
-            }
-
-            /// Upload new avatar
-            _ = try await req.fileStorage.uploadFile(file, key: key)
-
-            /// Create new Avatar
-            let avatar = try Avatar(key: key, originalFilename: file.filename, userID: user.requireID())
-            try await user.$avatar.create(avatar, on: transaction)
-
-            guard let userDB = try await User.query(on: transaction)
-                .filter(\.$id == user.requireID())
-                .with(\.$avatar)
-                .first()
-            else {
-                throw APIError.userNotFound
-            }
-
-            return userDB.toDTO(on: req)
-        }
-
+        let fileUpload = try req.content.decode(FileUpload.self)
+        
+        let userDTO = try await userService.uploadAvatar(user: user, file: fileUpload, on: req)
+        
         return req.success(
             userDTO,
             message: "Avatar uploaded successfully"
@@ -263,25 +192,9 @@ struct AuthController: RouteCollection {
     @Sendable
     func removeUserAvatar(req: Request) async throws -> APIResponse<UserDTO> {
         let user = try req.auth.require(User.self)
-
-        let userDTO = try await req.db.transaction { transaction in
-            guard let avatar = try await user.$avatar.get(on: transaction) else {
-                throw APIError.avatarNotFound
-            }
-            try await req.fileStorage.deleteFile(key: avatar.key)
-            try await avatar.delete(on: transaction)
-
-            guard let userDB = try await User.query(on: transaction)
-                .filter(\.$id == user.requireID())
-                .with(\.$avatar)
-                .first()
-            else {
-                throw APIError.userNotFound
-            }
-
-            return userDB.toDTO(on: req)
-        }
-
+        
+        let userDTO = try await userService.removeAvatar(user: user, on: req)
+        
         return req.success(
             userDTO,
             message: "Avatar removed successfully"

@@ -24,6 +24,8 @@ public func configure(_ app: Application) async throws {
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
     ContentConfiguration.global.use(encoder: encoder, for: .json)
+    
+    app.views.use(.leaf)
 
     let awsClient = AWSClient(
         credentialProvider: .static(
@@ -39,6 +41,10 @@ public func configure(_ app: Application) async throws {
 
     app.awsClient = awsClient
     app.fileStorage = S3Service(client: app.awsClient, config: s3Configuration)
+    app.authService = AuthService()
+    app.userService = UserService()
+    app.articleService = ArticleService()
+    app.commentService = CommentService()
 
     try app.databases.use(DatabaseConfigurationFactory.postgres(
         configuration: .init(
@@ -62,8 +68,5 @@ public func configure(_ app: Application) async throws {
     }
     await app.jwt.keys.add(hmac: .init(from: jwtSecret), digestAlgorithm: .sha256)
 
-    app.views.use(.leaf)
-
-    // register routes
     try routes(app)
 }

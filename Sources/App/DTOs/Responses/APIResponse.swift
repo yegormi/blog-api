@@ -139,8 +139,7 @@ extension APIResponse {
 }
 
 /// Empty data structure for responses without data
-struct EmptyData: Codable, Sendable {
-}
+struct EmptyData: Codable, Sendable {}
 
 // MARK: - WithExample Conformance
 

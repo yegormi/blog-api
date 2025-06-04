@@ -6,6 +6,7 @@ struct CommentController: RouteCollection {
     func boot(routes: any RoutesBuilder) throws {
         routes
             .grouped(JWTMiddleware())
+            .groupedOpenAPI(auth: .blogAuth)
             .groupedOpenAPIResponse(statusCode: .unauthorized, body: .type(APIErrorDTO.self), description: "Unauthorized")
             .groupedOpenAPIResponse(statusCode: .notFound, body: .type(APIErrorDTO.self), description: "Article not found")
             .grouped("articles", ":articleID")
@@ -33,8 +34,7 @@ struct CommentController: RouteCollection {
                         links: [
                             Link("articleID", in: .path): Link.ArticleID.self,
                             Link("id", in: .response): Link.CommentID.self,
-                        ],
-                        auth: .blogAuth
+                        ]
                     )
                     .response(statusCode: .badRequest, body: .type(APIErrorDTO.self), description: "Invalid input")
 
@@ -50,8 +50,7 @@ struct CommentController: RouteCollection {
                         links: [
                             Link("articleID", in: .path): Link.ArticleID.self,
                             Link("id", in: .response): Link.CommentID.self,
-                        ],
-                        auth: .blogAuth
+                        ]
                     )
                     .response(statusCode: .badRequest, body: .type(APIErrorDTO.self), description: "Invalid input")
 
@@ -72,8 +71,7 @@ struct CommentController: RouteCollection {
                                 links: [
                                     Link("articleID", in: .path): Link.ArticleID.self,
                                     Link("commentID", in: .path): Link.CommentID.self,
-                                ],
-                                auth: .blogAuth
+                                ]
                             )
 
                         comment.put(use: self.updateComment)
@@ -88,8 +86,7 @@ struct CommentController: RouteCollection {
                                 links: [
                                     Link("articleID", in: .path): Link.ArticleID.self,
                                     Link("commentID", in: .path): Link.CommentID.self,
-                                ],
-                                auth: .blogAuth
+                                ]
                             )
                             .response(statusCode: .badRequest, body: .type(APIErrorDTO.self), description: "Invalid input")
                             .response(
@@ -106,8 +103,7 @@ struct CommentController: RouteCollection {
                                 links: [
                                     Link("articleID", in: .path): Link.ArticleID.self,
                                     Link("commentID", in: .path): Link.CommentID.self,
-                                ],
-                                auth: .blogAuth
+                                ]
                             )
                             .response(statusCode: .noContent, description: "Comment deleted successfully")
                             .response(

@@ -45,6 +45,7 @@ struct AuthController: RouteCollection {
             }
 
         authenticated
+            .groupedOpenAPI(auth: .blogAuth)
             .groupedOpenAPIResponse(statusCode: .unauthorized, body: .type(APIErrorDTO.self), description: "Unauthorized")
             .group(
                 tags: TagObject(
@@ -62,8 +63,7 @@ struct AuthController: RouteCollection {
                         description: "Get the current user's profile information",
                         operationId: "getUserProfile",
                         response: .type(APIResponse<UserDTO>.self),
-                        responseContentType: .application(.json),
-                        auth: .blogAuth
+                        responseContentType: .application(.json)
                     )
                     .response(statusCode: .notFound, body: .type(APIErrorDTO.self), description: "User not found")
 
@@ -71,8 +71,7 @@ struct AuthController: RouteCollection {
                     .openAPI(
                         summary: "Logout user",
                         description: "Logout user and invalidate tokens",
-                        operationId: "logoutUser",
-                        auth: .blogAuth
+                        operationId: "logoutUser"
                     )
                     .response(statusCode: .noContent, description: "Successfully logged out")
 
@@ -80,8 +79,7 @@ struct AuthController: RouteCollection {
                     .openAPI(
                         summary: "Delete user account",
                         description: "Delete the current user's account",
-                        operationId: "deleteUserAccount",
-                        auth: .blogAuth
+                        operationId: "deleteUserAccount"
                     )
                     .response(statusCode: .noContent, description: "Account deleted successfully")
 
@@ -94,8 +92,7 @@ struct AuthController: RouteCollection {
                         body: .type(FileUpload.self),
                         contentType: .multipart(.formData),
                         response: .type(APIResponse<UserDTO>.self),
-                        responseContentType: .application(.json),
-                        auth: .blogAuth
+                        responseContentType: .application(.json)
                     )
                     .response(statusCode: .badRequest, body: .type(APIErrorDTO.self), description: "Invalid file")
 
@@ -105,8 +102,7 @@ struct AuthController: RouteCollection {
                         description: "Remove the user's avatar image",
                         operationId: "removeUserAvatar",
                         response: .type(APIResponse<UserDTO>.self),
-                        responseContentType: .application(.json),
-                        auth: .blogAuth
+                        responseContentType: .application(.json)
                     )
                     .response(statusCode: .notFound, body: .type(APIErrorDTO.self), description: "Avatar not found")
             }

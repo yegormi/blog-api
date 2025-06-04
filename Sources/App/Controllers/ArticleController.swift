@@ -6,6 +6,7 @@ struct ArticleController: RouteCollection {
     func boot(routes: any RoutesBuilder) throws {
         routes
             .grouped(JWTMiddleware())
+            .groupedOpenAPI(auth: .blogAuth)
             .groupedOpenAPIResponse(statusCode: .unauthorized, description: "Unauthorized")
             .group(
                 tags: TagObject(
@@ -31,8 +32,7 @@ struct ArticleController: RouteCollection {
                         responseContentType: .application(.json),
                         links: [
                             Link("id", in: .response): Link.ArticleID.self
-                        ],
-                        auth: .blogAuth
+                        ]
                     )
 
                 articles.post(use: self.createArticle)
@@ -46,8 +46,7 @@ struct ArticleController: RouteCollection {
                         responseContentType: .application(.json),
                         links: [
                             Link("id", in: .response): Link.ArticleID.self
-                        ],
-                        auth: .blogAuth
+                        ]
                     )
                     .response(statusCode: .badRequest, body: .type(APIErrorDTO.self), description: "Invalid input")
 
@@ -67,8 +66,7 @@ struct ArticleController: RouteCollection {
                                 responseContentType: .application(.json),
                                 links: [
                                     Link("articleID", in: .path): Link.ArticleID.self
-                                ],
-                                auth: .blogAuth
+                                ]
                             )
 
                         article.put(use: self.updateArticle)
@@ -82,8 +80,7 @@ struct ArticleController: RouteCollection {
                                 responseContentType: .application(.json),
                                 links: [
                                     Link("articleID", in: .path): Link.ArticleID.self
-                                ],
-                                auth: .blogAuth
+                                ]
                             )
                             .response(statusCode: .badRequest, body: .type(APIErrorDTO.self), description: "Invalid input")
 
@@ -94,8 +91,7 @@ struct ArticleController: RouteCollection {
                                 operationId: "deleteArticle",
                                 links: [
                                     Link("articleID", in: .path): Link.ArticleID.self
-                                ],
-                                auth: .blogAuth
+                                ]
                             )
                             .response(statusCode: .noContent, description: "Article deleted successfully")
                     }

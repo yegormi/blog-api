@@ -13,6 +13,10 @@ struct CommentDTO: Content, WithExample {
     let content: String
     /// When the comment was created
     let createdAt: String?
+    /// Parent comment ID if this is a reply
+    let parentCommentId: UUID?
+    /// Replies to this comment
+    let replies: [CommentDTO]?
 
     func toModel() -> Comment {
         let model = Comment()
@@ -26,6 +30,26 @@ struct CommentDTO: Content, WithExample {
         id: UUID(),
         user: UserDTO.example,
         content: "This is a sample comment.",
-        createdAt: "2023-12-01T10:00:00Z"
+        createdAt: "2023-12-01T10:00:00Z",
+        parentCommentId: nil,
+        replies: [.reply1, .reply2]
+    )
+    
+    static let reply1 = CommentDTO(
+        id: UUID(),
+        user: UserDTO.example,
+        content: "This is a reply to the comment.",
+        createdAt: "2023-12-01T10:05:00Z",
+        parentCommentId: UUID(),
+        replies: nil
+    )
+    
+    static let reply2 = CommentDTO(
+        id: UUID(),
+        user: UserDTO.example,
+        content: "This is second reply to the comment.",
+        createdAt: "2023-12-01T10:06:00Z",
+        parentCommentId: UUID(),
+        replies: nil
     )
 }

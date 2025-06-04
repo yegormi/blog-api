@@ -6,12 +6,12 @@ import VaporToOpenAPI
 struct AuthController: RouteCollection, Sendable {
     private let authService: any AuthServiceProtocol
     private let userService: any UserServiceProtocol
-    
+
     init(authService: any AuthServiceProtocol, userService: any UserServiceProtocol) {
         self.authService = authService
         self.userService = userService
     }
-    
+
     func boot(routes: any RoutesBuilder) throws {
         let authenticated = routes.grouped(JWTMiddleware())
 
@@ -120,9 +120,9 @@ struct AuthController: RouteCollection, Sendable {
     func registerUser(req: Request) async throws -> APIResponse<TokenDTO> {
         try RegisterRequest.validate(content: req)
         let request = try req.content.decode(RegisterRequest.self)
-        
+
         let tokenDTO = try await authService.register(request: request, on: req)
-        
+
         return req.created(
             tokenDTO,
             message: "User registered successfully"
@@ -133,9 +133,9 @@ struct AuthController: RouteCollection, Sendable {
     func loginUser(req: Request) async throws -> APIResponse<TokenDTO> {
         try LoginRequest.validate(content: req)
         let loginRequest = try req.content.decode(LoginRequest.self)
-        
+
         let tokenDTO = try await authService.login(request: loginRequest, on: req)
-        
+
         return req.success(
             tokenDTO,
             message: "User logged in successfully"
@@ -145,9 +145,9 @@ struct AuthController: RouteCollection, Sendable {
     @Sendable
     func logoutUser(req: Request) async throws -> APIResponse<EmptyData> {
         let user = try req.auth.require(User.self)
-        
-        try await authService.logout(user: user, on: req)
-        
+
+        try await self.authService.logout(user: user, on: req)
+
         return req.noContent(
             message: "User logged out successfully"
         )
@@ -156,9 +156,9 @@ struct AuthController: RouteCollection, Sendable {
     @Sendable
     func deleteUserAccount(req: Request) async throws -> APIResponse<EmptyData> {
         let user = try req.auth.require(User.self)
-        
-        try await authService.deleteUserAccount(user: user, on: req)
-        
+
+        try await self.authService.deleteUserAccount(user: user, on: req)
+
         return req.noContent(
             message: "User account deleted successfully"
         )
@@ -167,9 +167,9 @@ struct AuthController: RouteCollection, Sendable {
     @Sendable
     func getUserProfile(req: Request) async throws -> APIResponse<UserDTO> {
         let user = try req.auth.require(User.self)
-        
+
         let userDTO = try await authService.getUserProfile(user: user, on: req)
-        
+
         return req.success(
             userDTO,
             message: "User profile retrieved successfully"
@@ -180,9 +180,9 @@ struct AuthController: RouteCollection, Sendable {
     func uploadUserAvatar(req: Request) async throws -> APIResponse<UserDTO> {
         let user = try req.auth.require(User.self)
         let fileUpload = try req.content.decode(FileUpload.self)
-        
+
         let userDTO = try await userService.uploadAvatar(user: user, file: fileUpload, on: req)
-        
+
         return req.success(
             userDTO,
             message: "Avatar uploaded successfully"
@@ -192,9 +192,9 @@ struct AuthController: RouteCollection, Sendable {
     @Sendable
     func removeUserAvatar(req: Request) async throws -> APIResponse<UserDTO> {
         let user = try req.auth.require(User.self)
-        
+
         let userDTO = try await userService.removeAvatar(user: user, on: req)
-        
+
         return req.success(
             userDTO,
             message: "Avatar removed successfully"

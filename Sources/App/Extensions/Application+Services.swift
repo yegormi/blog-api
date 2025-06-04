@@ -4,19 +4,19 @@ extension Application {
     private struct AuthServiceKey: StorageKey {
         typealias Value = any AuthServiceProtocol
     }
-    
+
     private struct UserServiceKey: StorageKey {
         typealias Value = any UserServiceProtocol
     }
-    
+
     private struct ArticleServiceKey: StorageKey {
         typealias Value = any ArticleServiceProtocol
     }
-    
+
     private struct CommentServiceKey: StorageKey {
         typealias Value = any CommentServiceProtocol
     }
-    
+
     var authService: any AuthServiceProtocol {
         get {
             storage[AuthServiceKey.self] ?? AuthService()
@@ -25,7 +25,7 @@ extension Application {
             storage[AuthServiceKey.self] = newValue
         }
     }
-    
+
     var userService: any UserServiceProtocol {
         get {
             storage[UserServiceKey.self] ?? UserService()
@@ -34,7 +34,7 @@ extension Application {
             storage[UserServiceKey.self] = newValue
         }
     }
-    
+
     var articleService: any ArticleServiceProtocol {
         get {
             storage[ArticleServiceKey.self] ?? ArticleService()
@@ -43,7 +43,7 @@ extension Application {
             storage[ArticleServiceKey.self] = newValue
         }
     }
-    
+
     var commentService: any CommentServiceProtocol {
         get {
             storage[CommentServiceKey.self] ?? CommentService()

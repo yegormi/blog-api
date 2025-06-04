@@ -4,11 +4,11 @@ import VaporToOpenAPI
 
 struct CommentController: RouteCollection, Sendable {
     private let commentService: any CommentServiceProtocol
-    
+
     init(commentService: any CommentServiceProtocol) {
         self.commentService = commentService
     }
-    
+
     func boot(routes: any RoutesBuilder) throws {
         routes
             .grouped(JWTMiddleware())
@@ -117,6 +117,37 @@ struct CommentController: RouteCollection, Sendable {
                                 body: .type(APIErrorDTO.self),
                                 description: "Forbidden - not comment author"
                             )
+
+                        comment.post("replies", use: self.createReply)
+                            .openAPI(
+                                summary: "Create reply",
+                                description: "Create a reply to an existing comment",
+                                operationId: "createReply",
+                                body: .type(CommentRequest.self),
+                                contentType: .application(.json),
+                                response: .type(APIResponse<CommentDTO>.self),
+                                responseContentType: .application(.json),
+                                links: [
+                                    Link("articleID", in: .path): Link.ArticleID.self,
+                                    Link("commentID", in: .path): Link.CommentID.self,
+                                    Link("id", in: .response): Link.CommentID.self,
+                                ]
+                            )
+                            .response(statusCode: .badRequest, body: .type(APIErrorDTO.self), description: "Invalid input")
+
+                        comment.get("replies", use: self.getCommentReplies)
+                            .openAPI(
+                                summary: "Get comment replies",
+                                description: "Retrieve all replies for a specific comment",
+                                operationId: "getCommentReplies",
+                                response: .type(APIResponse<[CommentDTO]>.self),
+                                responseContentType: .application(.json),
+                                links: [
+                                    Link("articleID", in: .path): Link.ArticleID.self,
+                                    Link("commentID", in: .path): Link.CommentID.self,
+                                    Link("id", in: .response): Link.CommentID.self,
+                                ]
+                            )
                     }
             }
     }
@@ -126,14 +157,14 @@ struct CommentController: RouteCollection, Sendable {
         guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
             throw APIError.invalidParameter
         }
-        
+
         let pagination = PaginationRequest(
             page: req.query[Int.self, at: "page"],
             perPage: req.query[Int.self, at: "perPage"]
         )
-        
+
         let result = try await commentService.getArticleComments(articleID: articleID, pagination: pagination, on: req)
-        
+
         return req.successWithPagination(
             result.items,
             currentPage: pagination.validatedPage,
@@ -147,13 +178,13 @@ struct CommentController: RouteCollection, Sendable {
     func createComment(req: Request) async throws -> APIResponse<CommentDTO> {
         let user = try req.auth.require(User.self)
         let request = try req.content.decode(CommentRequest.self)
-        
+
         guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
             throw APIError.invalidParameter
         }
-        
+
         let commentDTO = try await commentService.createComment(request: request, articleID: articleID, user: user, on: req)
-        
+
         return req.created(
             commentDTO,
             message: "Comment created successfully"
@@ -165,9 +196,9 @@ struct CommentController: RouteCollection, Sendable {
         guard let commentId = req.parameters.get("commentID", as: UUID.self) else {
             throw APIError.invalidParameter
         }
-        
+
         let commentDTO = try await commentService.getCommentById(id: commentId, on: req)
-        
+
         return req.success(
             commentDTO,
             message: "Comment retrieved successfully"
@@ -178,13 +209,13 @@ struct CommentController: RouteCollection, Sendable {
     func updateComment(req: Request) async throws -> APIResponse<CommentDTO> {
         let user = try req.auth.require(User.self)
         let request = try req.content.decode(CommentRequest.self)
-        
+
         guard let commentId = req.parameters.get("commentID", as: UUID.self) else {
             throw APIError.invalidParameter
         }
-        
+
         let commentDTO = try await commentService.updateComment(id: commentId, request: request, user: user, on: req)
-        
+
         return req.success(
             commentDTO,
             message: "Comment updated successfully"
@@ -194,15 +225,56 @@ struct CommentController: RouteCollection, Sendable {
     @Sendable
     func deleteComment(req: Request) async throws -> APIResponse<EmptyData> {
         let user = try req.auth.require(User.self)
-        
+
         guard let commentId = req.parameters.get("commentID", as: UUID.self) else {
             throw APIError.invalidParameter
         }
-        
-        try await commentService.deleteComment(id: commentId, user: user, on: req)
-        
+
+        try await self.commentService.deleteComment(id: commentId, user: user, on: req)
+
         return req.noContent(
             message: "Comment deleted successfully"
+        )
+    }
+
+    @Sendable
+    func createReply(req: Request) async throws -> APIResponse<CommentDTO> {
+        let user = try req.auth.require(User.self)
+        let request = try req.content.decode(CommentRequest.self)
+
+        guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
+            throw APIError.invalidParameter
+        }
+
+        guard let parentCommentID = req.parameters.get("commentID", as: UUID.self) else {
+            throw APIError.invalidParameter
+        }
+
+        let commentDTO = try await commentService.createReply(
+            request: request,
+            articleID: articleID,
+            parentCommentID: parentCommentID,
+            user: user,
+            on: req
+        )
+
+        return req.created(
+            commentDTO,
+            message: "Reply created successfully"
+        )
+    }
+
+    @Sendable
+    func getCommentReplies(req: Request) async throws -> APIResponse<[CommentDTO]> {
+        guard let commentID = req.parameters.get("commentID", as: UUID.self) else {
+            throw APIError.invalidParameter
+        }
+
+        let replies = try await commentService.getCommentReplies(parentCommentID: commentID, on: req)
+
+        return req.success(
+            replies,
+            message: "Comment replies retrieved successfully"
         )
     }
 }

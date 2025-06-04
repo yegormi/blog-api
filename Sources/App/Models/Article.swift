@@ -19,6 +19,12 @@ final class Article: Model, @unchecked Sendable {
     @Children(for: \.$article)
     var comments: [Comment]
 
+    @Children(for: \.$article)
+    var likes: [ArticleLike]
+
+    @Children(for: \.$article)
+    var bookmarks: [Bookmark]
+
     @Timestamp(key: "created_at", on: .create, format: .iso8601(withMilliseconds: true))
     var createdAt: Date?
 
@@ -36,14 +42,29 @@ final class Article: Model, @unchecked Sendable {
 }
 
 extension Article {
-    func toDTO() -> ArticleDTO {
-        .init(
+    func toDTO(currentUser: User? = nil) -> ArticleDTO {
+        let likesCount = self.likes.filter(\.isLike).count
+        let dislikesCount = self.likes.filter { !$0.isLike }.count
+
+        var userLikedStatus: Bool?
+        var isBookmarked = false
+
+        if let currentUser {
+            userLikedStatus = self.likes.first { $0.$user.id == currentUser.id }?.isLike
+            isBookmarked = self.bookmarks.contains { $0.$user.id == currentUser.id }
+        }
+
+        return .init(
             id: self.id,
             title: self.title,
             content: self.content,
             userId: self.$user.id,
             createdAt: self.$createdAt.timestamp,
-            updatedAt: self.$updatedAt.timestamp
+            updatedAt: self.$updatedAt.timestamp,
+            likesCount: likesCount,
+            dislikesCount: dislikesCount,
+            userLikedStatus: userLikedStatus,
+            isBookmarked: isBookmarked
         )
     }
 }

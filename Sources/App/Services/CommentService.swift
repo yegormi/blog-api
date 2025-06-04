@@ -7,20 +7,27 @@ protocol CommentServiceProtocol: Sendable {
     func getCommentById(id: UUID, on req: Request) async throws -> CommentDTO
     func updateComment(id: UUID, request: CommentRequest, user: User, on req: Request) async throws -> CommentDTO
     func deleteComment(id: UUID, user: User, on req: Request) async throws
+    func createReply(request: CommentRequest, articleID: UUID, parentCommentID: UUID, user: User, on req: Request) async throws
+        -> CommentDTO
+    func getCommentReplies(parentCommentID: UUID, on req: Request) async throws -> [CommentDTO]
 }
 
 struct CommentService: CommentServiceProtocol, Sendable {
     func getArticleComments(articleID: UUID, pagination: PaginationRequest, on req: Request) async throws -> PaginatedComments {
         let query = Comment.query(on: req.db)
             .filter(\.$article.$id == articleID)
+            .filter(\.$parentComment.$id == .null)
             .with(\.$user)
+            .with(\.$replies) { reply in
+                reply.with(\.$user)
+            }
 
         let totalItems = try await query.count()
 
         let comments = try await query
             .range(pagination.offset ..< (pagination.offset + pagination.validatedPerPage))
             .all()
-            .map { $0.toDTO(on: req) }
+            .map { $0.toDTO(on: req, includeReplies: true) }
 
         return PaginatedComments(items: comments, totalItems: totalItems)
     }
@@ -57,11 +64,11 @@ struct CommentService: CommentServiceProtocol, Sendable {
             .first() else {
             throw APIError.commentNotFound
         }
-        
+
         guard try comment.$user.id == user.requireID() else {
             throw APIError.resourceOwnershipRequired
         }
-        
+
         comment.content = request.content
         try await comment.save(on: req.db)
 
@@ -72,11 +79,50 @@ struct CommentService: CommentServiceProtocol, Sendable {
         guard let comment = try await Comment.find(id, on: req.db) else {
             throw APIError.commentNotFound
         }
-        
+
         guard try comment.$user.id == user.requireID() else {
             throw APIError.resourceOwnershipRequired
         }
-        
+
         try await comment.delete(on: req.db)
+    }
+
+    func createReply(
+        request: CommentRequest,
+        articleID: UUID,
+        parentCommentID: UUID,
+        user: User,
+        on req: Request
+    ) async throws -> CommentDTO {
+        guard try await Comment.find(parentCommentID, on: req.db) != nil else {
+            throw APIError.commentNotFound
+        }
+
+        let reply = try Comment(
+            content: request.content,
+            articleID: articleID,
+            userID: user.requireID(),
+            parentCommentID: parentCommentID
+        )
+        try await reply.save(on: req.db)
+
+        guard let savedReply = try await Comment.query(on: req.db)
+            .filter(\.$id == reply.id!)
+            .with(\.$user)
+            .first() else {
+            throw APIError.databaseError
+        }
+
+        return savedReply.toDTO(on: req)
+    }
+
+    func getCommentReplies(parentCommentID: UUID, on req: Request) async throws -> [CommentDTO] {
+        let replies = try await Comment.query(on: req.db)
+            .filter(\.$parentComment.$id == parentCommentID)
+            .with(\.$user)
+            .all()
+            .map { $0.toDTO(on: req) }
+
+        return replies
     }
 }

@@ -4,11 +4,11 @@ import VaporToOpenAPI
 
 struct ArticleController: RouteCollection, Sendable {
     private let articleService: any ArticleServiceProtocol
-    
+
     init(articleService: any ArticleServiceProtocol) {
         self.articleService = articleService
     }
-    
+
     func boot(routes: any RoutesBuilder) throws {
         routes
             .grouped(JWTMiddleware())
@@ -100,6 +100,67 @@ struct ArticleController: RouteCollection, Sendable {
                                 ]
                             )
                             .response(statusCode: .noContent, description: "Article deleted successfully")
+
+                        article.post("like", use: self.likeArticle)
+                            .openAPI(
+                                summary: "Like article",
+                                description: "Like an article",
+                                operationId: "likeArticle",
+                                response: .type(APIResponse<EmptyData>.self),
+                                responseContentType: .application(.json),
+                                links: [
+                                    Link("articleID", in: .path): Link.ArticleID.self
+                                ]
+                            )
+                            .response(statusCode: .noContent, description: "Article liked successfully")
+
+                        article.post("dislike", use: self.dislikeArticle)
+                            .openAPI(
+                                summary: "Dislike article",
+                                description: "Dislike an article",
+                                operationId: "dislikeArticle",
+                                response: .type(APIResponse<EmptyData>.self),
+                                responseContentType: .application(.json),
+                                links: [
+                                    Link("articleID", in: .path): Link.ArticleID.self
+                                ]
+                            )
+                            .response(statusCode: .noContent, description: "Article disliked successfully")
+
+                        article.delete("like", use: self.removeLike)
+                            .openAPI(
+                                summary: "Remove like/dislike",
+                                description: "Remove like or dislike from an article",
+                                operationId: "removeLike",
+                                links: [
+                                    Link("articleID", in: .path): Link.ArticleID.self
+                                ]
+                            )
+                            .response(statusCode: .noContent, description: "Like/dislike removed successfully")
+
+                        article.post("bookmark", use: self.bookmarkArticle)
+                            .openAPI(
+                                summary: "Bookmark article",
+                                description: "Bookmark an article",
+                                operationId: "bookmarkArticle",
+                                response: .type(APIResponse<EmptyData>.self),
+                                responseContentType: .application(.json),
+                                links: [
+                                    Link("articleID", in: .path): Link.ArticleID.self
+                                ]
+                            )
+                            .response(statusCode: .noContent, description: "Article bookmarked successfully")
+
+                        article.delete("bookmark", use: self.removeBookmark)
+                            .openAPI(
+                                summary: "Remove bookmark",
+                                description: "Remove bookmark from an article",
+                                operationId: "removeBookmark",
+                                links: [
+                                    Link("articleID", in: .path): Link.ArticleID.self
+                                ]
+                            )
+                            .response(statusCode: .noContent, description: "Bookmark removed successfully")
                     }
             }
     }
@@ -110,11 +171,11 @@ struct ArticleController: RouteCollection, Sendable {
             page: req.query[Int.self, at: "page"],
             perPage: req.query[Int.self, at: "perPage"]
         )
-        
+
         let searchQuery = req.query[String.self, at: "q"]
-        
+
         let result = try await articleService.getAllArticles(pagination: pagination, searchQuery: searchQuery, on: req)
-        
+
         return req.successWithPagination(
             result.items,
             currentPage: pagination.validatedPage,
@@ -129,9 +190,9 @@ struct ArticleController: RouteCollection, Sendable {
         try CreateArticleRequest.validate(content: req)
         let user = try req.auth.require(User.self)
         let request = try req.content.decode(CreateArticleRequest.self)
-        
+
         let articleDTO = try await articleService.createArticle(request: request, user: user, on: req)
-        
+
         return req.created(
             articleDTO,
             message: "Article created successfully"
@@ -143,9 +204,9 @@ struct ArticleController: RouteCollection, Sendable {
         guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
             throw APIError.invalidParameter
         }
-        
+
         let articleDTO = try await articleService.getArticleById(id: articleID, on: req)
-        
+
         return req.success(
             articleDTO,
             message: "Article retrieved successfully"
@@ -156,13 +217,13 @@ struct ArticleController: RouteCollection, Sendable {
     func updateArticle(req: Request) async throws -> APIResponse<ArticleDTO> {
         let user = try req.auth.require(User.self)
         let request = try req.content.decode(UpdateArticleRequest.self)
-        
+
         guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
             throw APIError.invalidParameter
         }
-        
+
         let articleDTO = try await articleService.updateArticle(id: articleID, request: request, user: user, on: req)
-        
+
         return req.success(
             articleDTO,
             message: "Article updated successfully"
@@ -174,11 +235,81 @@ struct ArticleController: RouteCollection, Sendable {
         guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
             throw APIError.invalidParameter
         }
-        
-        try await articleService.deleteArticle(id: articleID, on: req)
-        
+
+        try await self.articleService.deleteArticle(id: articleID, on: req)
+
         return req.noContent(
             message: "Article deleted successfully"
+        )
+    }
+
+    @Sendable
+    func likeArticle(req: Request) async throws -> APIResponse<EmptyData> {
+        let user = try req.auth.require(User.self)
+        guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
+            throw APIError.invalidParameter
+        }
+
+        try await self.articleService.likeArticle(articleID: articleID, user: user, isLike: true, on: req)
+
+        return req.noContent(
+            message: "Article liked successfully"
+        )
+    }
+
+    @Sendable
+    func dislikeArticle(req: Request) async throws -> APIResponse<EmptyData> {
+        let user = try req.auth.require(User.self)
+        guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
+            throw APIError.invalidParameter
+        }
+
+        try await self.articleService.likeArticle(articleID: articleID, user: user, isLike: false, on: req)
+
+        return req.noContent(
+            message: "Article disliked successfully"
+        )
+    }
+
+    @Sendable
+    func removeLike(req: Request) async throws -> APIResponse<EmptyData> {
+        let user = try req.auth.require(User.self)
+        guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
+            throw APIError.invalidParameter
+        }
+
+        try await self.articleService.removeLike(articleID: articleID, user: user, on: req)
+
+        return req.noContent(
+            message: "Like/dislike removed successfully"
+        )
+    }
+
+    @Sendable
+    func bookmarkArticle(req: Request) async throws -> APIResponse<EmptyData> {
+        let user = try req.auth.require(User.self)
+        guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
+            throw APIError.invalidParameter
+        }
+
+        try await self.articleService.bookmarkArticle(articleID: articleID, user: user, on: req)
+
+        return req.noContent(
+            message: "Article bookmarked successfully"
+        )
+    }
+
+    @Sendable
+    func removeBookmark(req: Request) async throws -> APIResponse<EmptyData> {
+        let user = try req.auth.require(User.self)
+        guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
+            throw APIError.invalidParameter
+        }
+
+        try await self.articleService.removeBookmark(articleID: articleID, user: user, on: req)
+
+        return req.noContent(
+            message: "Bookmark removed successfully"
         )
     }
 }

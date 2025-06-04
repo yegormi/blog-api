@@ -17,6 +17,14 @@ struct ArticleDTO: Content, WithExample {
     let createdAt: String?
     /// When the article was last updated
     let updatedAt: String?
+    /// Number of likes for the article
+    let likesCount: Int?
+    /// Number of dislikes for the article
+    let dislikesCount: Int?
+    /// Whether the current user has liked this article (nil if not authenticated)
+    let userLikedStatus: Bool??
+    /// Whether the current user has bookmarked this article (nil if not authenticated)
+    let isBookmarked: Bool?
 
     func toModel(with id: User.IDValue) -> Article {
         let model = Article()
@@ -39,6 +47,10 @@ struct ArticleDTO: Content, WithExample {
         content: "This is a sample article content for OpenAPI documentation.",
         userId: UUID(),
         createdAt: "2023-12-01T10:00:00Z",
-        updatedAt: "2023-12-01T12:00:00Z"
+        updatedAt: "2023-12-01T12:00:00Z",
+        likesCount: 5,
+        dislikesCount: 1,
+        userLikedStatus: true,
+        isBookmarked: false
     )
 }

@@ -138,8 +138,12 @@ struct CommentController: RouteCollection, Sendable {
                         comment.get("replies", use: self.getCommentReplies)
                             .openAPI(
                                 summary: "Get comment replies",
-                                description: "Retrieve all replies for a specific comment",
+                                description: "Retrieve all replies for a specific comment with pagination support",
                                 operationId: "getCommentReplies",
+                                query: [
+                                    "page": .integer,
+                                    "perPage": .integer,
+                                ],
                                 response: .type(APIResponse<[CommentDTO]>.self),
                                 responseContentType: .application(.json),
                                 links: [
@@ -270,10 +274,18 @@ struct CommentController: RouteCollection, Sendable {
             throw APIError.invalidParameter
         }
 
-        let replies = try await commentService.getCommentReplies(parentCommentID: commentID, on: req)
+        let pagination = PaginationRequest(
+            page: req.query[Int.self, at: "page"],
+            perPage: req.query[Int.self, at: "perPage"]
+        )
 
-        return req.success(
-            replies,
+        let result = try await commentService.getCommentReplies(parentCommentID: commentID, pagination: pagination, on: req)
+
+        return req.successWithPagination(
+            result.items,
+            currentPage: pagination.validatedPage,
+            perPage: pagination.validatedPerPage,
+            totalItems: result.totalItems,
             message: "Comment replies retrieved successfully"
         )
     }

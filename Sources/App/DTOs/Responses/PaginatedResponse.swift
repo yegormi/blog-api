@@ -7,3 +7,4 @@ struct PaginatedResponse<T: Codable & Sendable>: Codable, Sendable {
 
 typealias PaginatedArticles = PaginatedResponse<ArticleDTO>
 typealias PaginatedComments = PaginatedResponse<CommentDTO>
+typealias PaginatedReplies = PaginatedResponse<CommentDTO>

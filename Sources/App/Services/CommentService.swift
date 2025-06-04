@@ -9,7 +9,7 @@ protocol CommentServiceProtocol: Sendable {
     func deleteComment(id: UUID, user: User, on req: Request) async throws
     func createReply(request: CommentRequest, articleID: UUID, parentCommentID: UUID, user: User, on req: Request) async throws
         -> CommentDTO
-    func getCommentReplies(parentCommentID: UUID, on req: Request) async throws -> [CommentDTO]
+    func getCommentReplies(parentCommentID: UUID, pagination: PaginationRequest, on req: Request) async throws -> PaginatedReplies
 }
 
 struct CommentService: CommentServiceProtocol, Sendable {
@@ -27,7 +27,7 @@ struct CommentService: CommentServiceProtocol, Sendable {
         let comments = try await query
             .range(pagination.offset ..< (pagination.offset + pagination.validatedPerPage))
             .all()
-            .map { $0.toDTO(on: req, includeReplies: true) }
+            .map { $0.toDTO(on: req, includeReplies: false) }
 
         return PaginatedComments(items: comments, totalItems: totalItems)
     }
@@ -116,13 +116,22 @@ struct CommentService: CommentServiceProtocol, Sendable {
         return savedReply.toDTO(on: req)
     }
 
-    func getCommentReplies(parentCommentID: UUID, on req: Request) async throws -> [CommentDTO] {
-        let replies = try await Comment.query(on: req.db)
+    func getCommentReplies(parentCommentID: UUID, pagination: PaginationRequest, on req: Request) async throws -> PaginatedReplies {
+        let query = Comment.query(on: req.db)
             .filter(\.$parentComment.$id == parentCommentID)
             .with(\.$user)
+            .with(\.$replies) { reply in
+                reply.with(\.$user)
+            }
+            .sort(\.$createdAt, .ascending)
+
+        let totalItems = try await query.count()
+
+        let replies = try await query
+            .range(pagination.offset ..< (pagination.offset + pagination.validatedPerPage))
             .all()
             .map { $0.toDTO(on: req) }
 
-        return replies
+        return PaginatedReplies(items: replies, totalItems: totalItems)
     }
 }

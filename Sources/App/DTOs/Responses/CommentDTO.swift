@@ -17,6 +17,8 @@ struct CommentDTO: Content, WithExample {
     let parentCommentId: UUID?
     /// Replies to this comment
     let replies: [CommentDTO]?
+    /// Total number of replies
+    let replyCount: Int
 
     func toModel() -> Comment {
         let model = Comment()
@@ -32,7 +34,8 @@ struct CommentDTO: Content, WithExample {
         content: "This is a sample comment.",
         createdAt: "2023-12-01T10:00:00Z",
         parentCommentId: nil,
-        replies: [.reply1, .reply2]
+        replies: [.reply1, .reply2],
+        replyCount: 2
     )
     
     static let reply1 = CommentDTO(
@@ -41,7 +44,8 @@ struct CommentDTO: Content, WithExample {
         content: "This is a reply to the comment.",
         createdAt: "2023-12-01T10:05:00Z",
         parentCommentId: UUID(),
-        replies: nil
+        replies: nil,
+        replyCount: 0
     )
     
     static let reply2 = CommentDTO(
@@ -50,6 +54,7 @@ struct CommentDTO: Content, WithExample {
         content: "This is second reply to the comment.",
         createdAt: "2023-12-01T10:06:00Z",
         parentCommentId: UUID(),
-        replies: nil
+        replies: nil,
+        replyCount: 0
     )
 }

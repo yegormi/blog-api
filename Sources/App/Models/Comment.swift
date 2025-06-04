@@ -54,7 +54,8 @@ extension Comment {
             content: self.content,
             createdAt: self.$createdAt.timestamp,
             parentCommentId: self.$parentComment.id,
-            replies: replies
+            replies: replies,
+            replyCount: self.replies.count
         )
     }
 }

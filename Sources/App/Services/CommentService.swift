@@ -18,16 +18,13 @@ struct CommentService: CommentServiceProtocol, Sendable {
             .filter(\.$article.$id == articleID)
             .filter(\.$parentComment.$id == .null)
             .with(\.$user)
-            .with(\.$replies) { reply in
-                reply.with(\.$user)
-            }
 
         let totalItems = try await query.count()
 
         let comments = try await query
             .range(pagination.offset ..< (pagination.offset + pagination.validatedPerPage))
             .all()
-            .map { $0.toDTO(on: req, includeReplies: false) }
+            .asyncMap { try await $0.toDTO(on: req, includeReplies: true) }
 
         return PaginatedComments(items: comments, totalItems: totalItems)
     }
@@ -39,29 +36,32 @@ struct CommentService: CommentServiceProtocol, Sendable {
         guard let savedComment = try await Comment.query(on: req.db)
             .filter(\.$id == comment.id!)
             .with(\.$user)
-            .first() else {
+            .first()
+        else {
             throw APIError.databaseError
         }
 
-        return savedComment.toDTO(on: req)
+        return try await savedComment.toDTO(on: req, includeReplies: true)
     }
 
     func getCommentById(id: UUID, on req: Request) async throws -> CommentDTO {
         guard let comment = try await Comment.query(on: req.db)
             .filter(\.$id == id)
             .with(\.$user)
-            .first() else {
+            .first()
+        else {
             throw APIError.commentNotFound
         }
 
-        return comment.toDTO(on: req)
+        return try await comment.toDTO(on: req, includeReplies: true)
     }
 
     func updateComment(id: UUID, request: CommentRequest, user: User, on req: Request) async throws -> CommentDTO {
         guard let comment = try await Comment.query(on: req.db)
             .filter(\.$id == id)
             .with(\.$user)
-            .first() else {
+            .first()
+        else {
             throw APIError.commentNotFound
         }
 
@@ -72,7 +72,7 @@ struct CommentService: CommentServiceProtocol, Sendable {
         comment.content = request.content
         try await comment.save(on: req.db)
 
-        return comment.toDTO(on: req)
+        return try await comment.toDTO(on: req, includeReplies: true)
     }
 
     func deleteComment(id: UUID, user: User, on req: Request) async throws {
@@ -107,30 +107,31 @@ struct CommentService: CommentServiceProtocol, Sendable {
         try await reply.save(on: req.db)
 
         guard let savedReply = try await Comment.query(on: req.db)
-            .filter(\.$id == reply.id!)
+            .filter(\.$id == reply.requireID())
             .with(\.$user)
-            .first() else {
+            .first()
+        else {
             throw APIError.databaseError
         }
 
-        return savedReply.toDTO(on: req)
+        return try await savedReply.toDTO(on: req, includeReplies: true)
     }
 
-    func getCommentReplies(parentCommentID: UUID, pagination: PaginationRequest, on req: Request) async throws -> PaginatedReplies {
+    func getCommentReplies(
+        parentCommentID: UUID,
+        pagination: PaginationRequest,
+        on req: Request
+    ) async throws -> PaginatedReplies {
         let query = Comment.query(on: req.db)
             .filter(\.$parentComment.$id == parentCommentID)
             .with(\.$user)
-            .with(\.$replies) { reply in
-                reply.with(\.$user)
-            }
-            .sort(\.$createdAt, .ascending)
 
         let totalItems = try await query.count()
 
         let replies = try await query
             .range(pagination.offset ..< (pagination.offset + pagination.validatedPerPage))
             .all()
-            .map { $0.toDTO(on: req) }
+            .asyncMap { try await $0.toDTO(on: req, includeReplies: true) }
 
         return PaginatedReplies(items: replies, totalItems: totalItems)
     }

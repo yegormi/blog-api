@@ -45,8 +45,21 @@ final class Comment: Model, @unchecked Sendable {
 }
 
 extension Comment {
-    func toDTO(on req: Request, includeReplies: Bool = false) -> CommentDTO {
-        let replies: [CommentDTO]? = includeReplies ? self.replies.map { $0.toDTO(on: req, includeReplies: false) } : nil
+    func toDTO(on req: Request, includeReplies: Bool = false) async throws -> CommentDTO {
+        if includeReplies {
+            try await self.$user.load(on: req.db)
+            try await self.$replies.load(on: req.db)
+
+            for reply in self.replies {
+                try await self.loadRepliesRecursively(reply, on: req)
+            }
+        } else {
+            try await self.$user.load(on: req.db)
+        }
+
+        let replies: [CommentDTO]? = try await includeReplies ? self.replies.asyncMap {
+            try await $0.toDTO(on: req, includeReplies: true)
+        } : nil
 
         return .init(
             id: self.id,
@@ -57,5 +70,13 @@ extension Comment {
             replies: replies,
             replyCount: self.replies.count
         )
+    }
+
+    private func loadRepliesRecursively(_ comment: Comment, on req: Request) async throws {
+        try await comment.$replies.load(on: req.db)
+
+        for reply in comment.replies {
+            try await self.loadRepliesRecursively(reply, on: req)
+        }
     }
 }

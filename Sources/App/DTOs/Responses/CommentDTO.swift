@@ -37,7 +37,7 @@ struct CommentDTO: Content, WithExample {
         replies: [.reply1, .reply2],
         replyCount: 2
     )
-    
+
     static let reply1 = CommentDTO(
         id: UUID(),
         user: UserDTO.example,
@@ -47,7 +47,7 @@ struct CommentDTO: Content, WithExample {
         replies: nil,
         replyCount: 0
     )
-    
+
     static let reply2 = CommentDTO(
         id: UUID(),
         user: UserDTO.example,

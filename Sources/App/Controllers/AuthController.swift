@@ -92,7 +92,7 @@ struct AuthController: RouteCollection, Sendable {
                     .response(statusCode: .noContent, description: "Account deleted successfully")
 
                 let avatar = me.grouped("avatar")
-                avatar.on(.POST, "upload", body: .collect(maxSize: "10mb"), use: self.uploadUserAvatar)
+                avatar.on(.POST, body: .collect(maxSize: "10mb"), use: self.uploadUserAvatar)
                     .openAPI(
                         summary: "Upload avatar",
                         description: "Upload an avatar image for the user",
@@ -104,7 +104,7 @@ struct AuthController: RouteCollection, Sendable {
                     )
                     .response(statusCode: .badRequest, body: .type(APIErrorDTO.self), description: "Invalid file")
 
-                avatar.on(.DELETE, "remove", use: self.removeUserAvatar)
+                avatar.on(.DELETE, use: self.removeUserAvatar)
                     .openAPI(
                         summary: "Remove avatar",
                         description: "Remove the user's avatar image",

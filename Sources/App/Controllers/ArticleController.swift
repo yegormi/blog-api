@@ -35,10 +35,7 @@ struct ArticleController: RouteCollection, Sendable {
                             "perPage": .integer,
                         ],
                         response: .type(APIResponse<[ArticleDTO]>.self),
-                        responseContentType: .application(.json),
-                        links: [
-                            Link("id", in: .response): Link.ArticleID.self
-                        ]
+                        responseContentType: .application(.json)
                     )
 
                 articles.post(use: self.createArticle)
@@ -49,10 +46,7 @@ struct ArticleController: RouteCollection, Sendable {
                         body: .type(CreateArticleRequest.self),
                         contentType: .application(.json),
                         response: .type(APIResponse<ArticleDTO>.self),
-                        responseContentType: .application(.json),
-                        links: [
-                            Link("id", in: .response): Link.ArticleID.self
-                        ]
+                        responseContentType: .application(.json)
                     )
                     .response(statusCode: .badRequest, body: .type(APIErrorDTO.self), description: "Invalid input")
 
@@ -69,10 +63,7 @@ struct ArticleController: RouteCollection, Sendable {
                                 description: "Retrieve a specific article by its ID",
                                 operationId: "getArticleById",
                                 response: .type(APIResponse<ArticleDTO>.self),
-                                responseContentType: .application(.json),
-                                links: [
-                                    Link("articleID", in: .path): Link.ArticleID.self
-                                ]
+                                responseContentType: .application(.json)
                             )
 
                         article.put(use: self.updateArticle)
@@ -83,10 +74,7 @@ struct ArticleController: RouteCollection, Sendable {
                                 body: .type(UpdateArticleRequest.self),
                                 contentType: .application(.json),
                                 response: .type(APIResponse<ArticleDTO>.self),
-                                responseContentType: .application(.json),
-                                links: [
-                                    Link("articleID", in: .path): Link.ArticleID.self
-                                ]
+                                responseContentType: .application(.json)
                             )
                             .response(statusCode: .badRequest, body: .type(APIErrorDTO.self), description: "Invalid input")
 
@@ -94,10 +82,7 @@ struct ArticleController: RouteCollection, Sendable {
                             .openAPI(
                                 summary: "Delete article",
                                 description: "Delete an existing article",
-                                operationId: "deleteArticle",
-                                links: [
-                                    Link("articleID", in: .path): Link.ArticleID.self
-                                ]
+                                operationId: "deleteArticle"
                             )
                             .response(statusCode: .noContent, description: "Article deleted successfully")
 
@@ -107,10 +92,7 @@ struct ArticleController: RouteCollection, Sendable {
                                 description: "Add a like to an article",
                                 operationId: "likeArticle",
                                 response: .type(APIResponse<EmptyData>.self),
-                                responseContentType: .application(.json),
-                                links: [
-                                    Link("articleID", in: .path): Link.ArticleID.self
-                                ]
+                                responseContentType: .application(.json)
                             )
                             .response(statusCode: .noContent, description: "Article liked successfully")
 
@@ -118,10 +100,7 @@ struct ArticleController: RouteCollection, Sendable {
                             .openAPI(
                                 summary: "Unlike article",
                                 description: "Remove like from an article",
-                                operationId: "unlikeArticle",
-                                links: [
-                                    Link("articleID", in: .path): Link.ArticleID.self
-                                ]
+                                operationId: "unlikeArticle"
                             )
                             .response(statusCode: .noContent, description: "Article unliked successfully")
 
@@ -131,10 +110,7 @@ struct ArticleController: RouteCollection, Sendable {
                                 description: "Add a bookmark to an article",
                                 operationId: "bookmarkArticle",
                                 response: .type(APIResponse<EmptyData>.self),
-                                responseContentType: .application(.json),
-                                links: [
-                                    Link("articleID", in: .path): Link.ArticleID.self
-                                ]
+                                responseContentType: .application(.json)
                             )
                             .response(statusCode: .noContent, description: "Article bookmarked successfully")
 
@@ -142,10 +118,7 @@ struct ArticleController: RouteCollection, Sendable {
                             .openAPI(
                                 summary: "Remove bookmark",
                                 description: "Remove bookmark from an article",
-                                operationId: "unbookmarkArticle",
-                                links: [
-                                    Link("articleID", in: .path): Link.ArticleID.self
-                                ]
+                                operationId: "unbookmarkArticle"
                             )
                             .response(statusCode: .noContent, description: "Article bookmark removed successfully")
                     }

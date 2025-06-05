@@ -36,11 +36,7 @@ struct CommentController: RouteCollection, Sendable {
                             "perPage": .integer,
                         ],
                         response: .type(APIResponse<[CommentDTO]>.self),
-                        responseContentType: .application(.json),
-                        links: [
-                            Link("articleID", in: .path): Link.ArticleID.self,
-                            Link("id", in: .response): Link.CommentID.self,
-                        ]
+                        responseContentType: .application(.json)
                     )
                     .response(statusCode: .badRequest, body: .type(APIErrorDTO.self), description: "Invalid input")
 
@@ -52,11 +48,7 @@ struct CommentController: RouteCollection, Sendable {
                         body: .type(CommentRequest.self),
                         contentType: .application(.json),
                         response: .type(APIResponse<CommentDTO>.self),
-                        responseContentType: .application(.json),
-                        links: [
-                            Link("articleID", in: .path): Link.ArticleID.self,
-                            Link("id", in: .response): Link.CommentID.self,
-                        ]
+                        responseContentType: .application(.json)
                     )
                     .response(statusCode: .badRequest, body: .type(APIErrorDTO.self), description: "Invalid input")
 
@@ -73,11 +65,7 @@ struct CommentController: RouteCollection, Sendable {
                                 description: "Retrieve a specific comment by its ID",
                                 operationId: "getCommentById",
                                 response: .type(APIResponse<CommentDTO>.self),
-                                responseContentType: .application(.json),
-                                links: [
-                                    Link("articleID", in: .path): Link.ArticleID.self,
-                                    Link("commentID", in: .path): Link.CommentID.self,
-                                ]
+                                responseContentType: .application(.json)
                             )
 
                         comment.put(use: self.updateComment)
@@ -88,11 +76,7 @@ struct CommentController: RouteCollection, Sendable {
                                 body: .type(CommentRequest.self),
                                 contentType: .application(.json),
                                 response: .type(APIResponse<CommentDTO>.self),
-                                responseContentType: .application(.json),
-                                links: [
-                                    Link("articleID", in: .path): Link.ArticleID.self,
-                                    Link("commentID", in: .path): Link.CommentID.self,
-                                ]
+                                responseContentType: .application(.json)
                             )
                             .response(statusCode: .badRequest, body: .type(APIErrorDTO.self), description: "Invalid input")
                             .response(
@@ -105,11 +89,7 @@ struct CommentController: RouteCollection, Sendable {
                             .openAPI(
                                 summary: "Delete comment",
                                 description: "Delete an existing comment (only by the comment author)",
-                                operationId: "deleteComment",
-                                links: [
-                                    Link("articleID", in: .path): Link.ArticleID.self,
-                                    Link("commentID", in: .path): Link.CommentID.self,
-                                ]
+                                operationId: "deleteComment"
                             )
                             .response(statusCode: .noContent, description: "Comment deleted successfully")
                             .response(
@@ -126,12 +106,7 @@ struct CommentController: RouteCollection, Sendable {
                                 body: .type(CommentRequest.self),
                                 contentType: .application(.json),
                                 response: .type(APIResponse<CommentDTO>.self),
-                                responseContentType: .application(.json),
-                                links: [
-                                    Link("articleID", in: .path): Link.ArticleID.self,
-                                    Link("commentID", in: .path): Link.CommentID.self,
-                                    Link("id", in: .response): Link.CommentID.self,
-                                ]
+                                responseContentType: .application(.json)
                             )
                             .response(statusCode: .badRequest, body: .type(APIErrorDTO.self), description: "Invalid input")
 
@@ -145,12 +120,7 @@ struct CommentController: RouteCollection, Sendable {
                                     "perPage": .integer,
                                 ],
                                 response: .type(APIResponse<[CommentDTO]>.self),
-                                responseContentType: .application(.json),
-                                links: [
-                                    Link("articleID", in: .path): Link.ArticleID.self,
-                                    Link("commentID", in: .path): Link.CommentID.self,
-                                    Link("id", in: .response): Link.CommentID.self,
-                                ]
+                                responseContentType: .application(.json)
                             )
                     }
             }

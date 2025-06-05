@@ -104,7 +104,7 @@ struct ArticleController: RouteCollection, Sendable {
                         article.post("like", use: self.likeArticle)
                             .openAPI(
                                 summary: "Like article",
-                                description: "Like an article",
+                                description: "Add a like to an article",
                                 operationId: "likeArticle",
                                 response: .type(APIResponse<EmptyData>.self),
                                 responseContentType: .application(.json),
@@ -114,34 +114,21 @@ struct ArticleController: RouteCollection, Sendable {
                             )
                             .response(statusCode: .noContent, description: "Article liked successfully")
 
-                        article.post("dislike", use: self.dislikeArticle)
+                        article.delete("like", use: self.unlikeArticle)
                             .openAPI(
-                                summary: "Dislike article",
-                                description: "Dislike an article",
-                                operationId: "dislikeArticle",
-                                response: .type(APIResponse<EmptyData>.self),
-                                responseContentType: .application(.json),
+                                summary: "Unlike article",
+                                description: "Remove like from an article",
+                                operationId: "unlikeArticle",
                                 links: [
                                     Link("articleID", in: .path): Link.ArticleID.self
                                 ]
                             )
-                            .response(statusCode: .noContent, description: "Article disliked successfully")
-
-                        article.delete("like", use: self.removeLike)
-                            .openAPI(
-                                summary: "Remove like/dislike",
-                                description: "Remove like or dislike from an article",
-                                operationId: "removeLike",
-                                links: [
-                                    Link("articleID", in: .path): Link.ArticleID.self
-                                ]
-                            )
-                            .response(statusCode: .noContent, description: "Like/dislike removed successfully")
+                            .response(statusCode: .noContent, description: "Article unliked successfully")
 
                         article.post("bookmark", use: self.bookmarkArticle)
                             .openAPI(
                                 summary: "Bookmark article",
-                                description: "Bookmark an article",
+                                description: "Add a bookmark to an article",
                                 operationId: "bookmarkArticle",
                                 response: .type(APIResponse<EmptyData>.self),
                                 responseContentType: .application(.json),
@@ -151,22 +138,24 @@ struct ArticleController: RouteCollection, Sendable {
                             )
                             .response(statusCode: .noContent, description: "Article bookmarked successfully")
 
-                        article.delete("bookmark", use: self.removeBookmark)
+                        article.delete("bookmark", use: self.unbookmarkArticle)
                             .openAPI(
                                 summary: "Remove bookmark",
                                 description: "Remove bookmark from an article",
-                                operationId: "removeBookmark",
+                                operationId: "unbookmarkArticle",
                                 links: [
                                     Link("articleID", in: .path): Link.ArticleID.self
                                 ]
                             )
-                            .response(statusCode: .noContent, description: "Bookmark removed successfully")
+                            .response(statusCode: .noContent, description: "Article bookmark removed successfully")
                     }
             }
     }
 
     @Sendable
     func getAllArticles(req: Request) async throws -> APIResponse<[ArticleDTO]> {
+        let user = try req.auth.require(User.self)
+        
         let pagination = PaginationRequest(
             page: req.query[Int.self, at: "page"],
             perPage: req.query[Int.self, at: "perPage"]
@@ -174,7 +163,12 @@ struct ArticleController: RouteCollection, Sendable {
 
         let searchQuery = req.query[String.self, at: "q"]
 
-        let result = try await articleService.getAllArticles(pagination: pagination, searchQuery: searchQuery, on: req)
+        let result = try await articleService.getAllArticles(
+            pagination: pagination,
+            searchQuery: searchQuery,
+            user: user,
+            on: req
+        )
 
         return req.successWithPagination(
             result.items,
@@ -201,11 +195,13 @@ struct ArticleController: RouteCollection, Sendable {
 
     @Sendable
     func getArticleById(req: Request) async throws -> APIResponse<ArticleDTO> {
+        let user = try req.auth.require(User.self)
+
         guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
             throw APIError.invalidParameter
         }
 
-        let articleDTO = try await articleService.getArticleById(id: articleID, on: req)
+        let articleDTO = try await articleService.getArticleById(id: articleID, user: user, on: req)
 
         return req.success(
             articleDTO,
@@ -250,7 +246,7 @@ struct ArticleController: RouteCollection, Sendable {
             throw APIError.invalidParameter
         }
 
-        try await self.articleService.likeArticle(articleID: articleID, user: user, isLike: true, on: req)
+        try await self.articleService.likeArticle(articleID: articleID, user: user, on: req)
 
         return req.noContent(
             message: "Article liked successfully"
@@ -258,30 +254,16 @@ struct ArticleController: RouteCollection, Sendable {
     }
 
     @Sendable
-    func dislikeArticle(req: Request) async throws -> APIResponse<EmptyData> {
+    func unlikeArticle(req: Request) async throws -> APIResponse<EmptyData> {
         let user = try req.auth.require(User.self)
         guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
             throw APIError.invalidParameter
         }
 
-        try await self.articleService.likeArticle(articleID: articleID, user: user, isLike: false, on: req)
+        try await self.articleService.unlikeArticle(articleID: articleID, user: user, on: req)
 
         return req.noContent(
-            message: "Article disliked successfully"
-        )
-    }
-
-    @Sendable
-    func removeLike(req: Request) async throws -> APIResponse<EmptyData> {
-        let user = try req.auth.require(User.self)
-        guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
-            throw APIError.invalidParameter
-        }
-
-        try await self.articleService.removeLike(articleID: articleID, user: user, on: req)
-
-        return req.noContent(
-            message: "Like/dislike removed successfully"
+            message: "Article unliked successfully"
         )
     }
 
@@ -300,16 +282,16 @@ struct ArticleController: RouteCollection, Sendable {
     }
 
     @Sendable
-    func removeBookmark(req: Request) async throws -> APIResponse<EmptyData> {
+    func unbookmarkArticle(req: Request) async throws -> APIResponse<EmptyData> {
         let user = try req.auth.require(User.self)
         guard let articleID = req.parameters.get("articleID", as: UUID.self) else {
             throw APIError.invalidParameter
         }
 
-        try await self.articleService.removeBookmark(articleID: articleID, user: user, on: req)
+        try await self.articleService.unbookmarkArticle(articleID: articleID, user: user, on: req)
 
         return req.noContent(
-            message: "Bookmark removed successfully"
+            message: "Article bookmark removed successfully"
         )
     }
 }

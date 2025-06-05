@@ -1,5 +1,6 @@
 import Fluent
 import Foundation
+import Vapor
 
 final class Article: Model, @unchecked Sendable {
     static let schema = "articles"
@@ -42,18 +43,10 @@ final class Article: Model, @unchecked Sendable {
 }
 
 extension Article {
-    func toDTO(currentUser: User? = nil) -> ArticleDTO {
-        let likesCount = self.likes.filter(\.isLike).count
-        let dislikesCount = self.likes.filter { !$0.isLike }.count
-
-        var userLikedStatus: Bool?
-        var isBookmarked = false
-
-        if let currentUser {
-            userLikedStatus = self.likes.first { $0.$user.id == currentUser.id }?.isLike
-            isBookmarked = self.bookmarks.contains { $0.$user.id == currentUser.id }
-        }
-
+    func toDTO(user: User) throws -> ArticleDTO {
+        let isLiked = try self.$likes.value?.contains { try $0.$user.id == user.requireID() } ?? false
+        let isBookmarked = try self.$bookmarks.value?.contains { try $0.$user.id == user.requireID() } ?? false
+        
         return .init(
             id: self.id,
             title: self.title,
@@ -61,9 +54,8 @@ extension Article {
             userId: self.$user.id,
             createdAt: self.$createdAt.timestamp,
             updatedAt: self.$updatedAt.timestamp,
-            likesCount: likesCount,
-            dislikesCount: dislikesCount,
-            userLikedStatus: userLikedStatus,
+            likesCount: self.$likes.value?.count ?? 0,
+            isLiked: isLiked,
             isBookmarked: isBookmarked
         )
     }

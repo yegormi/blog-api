@@ -62,9 +62,8 @@ public func configure(_ app: Application) async throws {
     app.migrations.add(CreateAvatar())
     app.migrations.add(CreateArticle())
     app.migrations.add(CreateComment())
-    app.migrations.add(CreateArticleLike())
     app.migrations.add(CreateBookmark())
-    app.migrations.add(AddParentCommentToComment())
+    app.migrations.add(CreateArticleLike())
 
     guard let jwtSecret = Environment.get("JWT_SECRET") else {
         preconditionFailure("JWT_SECRET environment variable is not set")

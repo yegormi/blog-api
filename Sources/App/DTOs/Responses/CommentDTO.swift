@@ -13,8 +13,8 @@ struct CommentDTO: Content, WithExample {
     let content: String
     /// When the comment was created
     let createdAt: String?
-    /// Parent comment ID if this is a reply
-    let parentCommentId: UUID?
+    /// Parent ID if this is a reply
+    let parentID: UUID?
     /// Replies to this comment
     let replies: [CommentDTO]?
     /// Total number of replies
@@ -33,7 +33,7 @@ struct CommentDTO: Content, WithExample {
         user: UserDTO.example,
         content: "This is a sample comment.",
         createdAt: "2023-12-01T10:00:00Z",
-        parentCommentId: nil,
+        parentID: nil,
         replies: [.reply1, .reply2],
         replyCount: 2
     )
@@ -43,7 +43,7 @@ struct CommentDTO: Content, WithExample {
         user: UserDTO.example,
         content: "This is a reply to the comment.",
         createdAt: "2023-12-01T10:05:00Z",
-        parentCommentId: UUID(),
+        parentID: UUID(),
         replies: nil,
         replyCount: 0
     )
@@ -53,7 +53,7 @@ struct CommentDTO: Content, WithExample {
         user: UserDTO.example,
         content: "This is second reply to the comment.",
         createdAt: "2023-12-01T10:06:00Z",
-        parentCommentId: UUID(),
+        parentID: UUID(),
         replies: nil,
         replyCount: 0
     )

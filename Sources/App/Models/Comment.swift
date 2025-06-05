@@ -16,10 +16,10 @@ final class Comment: Model, @unchecked Sendable {
     @Parent(key: "user_id")
     var user: User
 
-    @OptionalParent(key: "parent_comment_id")
-    var parentComment: Comment?
+    @OptionalParent(key: "parent_id")
+    var parent: Comment?
 
-    @Children(for: \.$parentComment)
+    @Children(for: \.$parent)
     var replies: [Comment]
 
     @Timestamp(key: "created_at", on: .create, format: .iso8601(withMilliseconds: true))
@@ -32,14 +32,14 @@ final class Comment: Model, @unchecked Sendable {
         content: String,
         articleID: Article.IDValue,
         userID: User.IDValue,
-        parentCommentID: Comment.IDValue? = nil
+        parentID: Comment.IDValue? = nil
     ) {
         self.id = id
         self.content = content
         self.$article.id = articleID
         self.$user.id = userID
-        if let parentCommentID {
-            self.$parentComment.id = parentCommentID
+        if let parentID {
+            self.$parent.id = parentID
         }
     }
 }
@@ -66,7 +66,7 @@ extension Comment {
             user: self.user.toDTO(on: req),
             content: self.content,
             createdAt: self.$createdAt.timestamp,
-            parentCommentId: self.$parentComment.id,
+            parentID: self.$parent.id,
             replies: replies,
             replyCount: self.replies.count
         )

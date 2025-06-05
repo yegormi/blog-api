@@ -7,16 +7,16 @@ protocol CommentServiceProtocol: Sendable {
     func getCommentById(id: UUID, on req: Request) async throws -> CommentDTO
     func updateComment(id: UUID, request: CommentRequest, user: User, on req: Request) async throws -> CommentDTO
     func deleteComment(id: UUID, user: User, on req: Request) async throws
-    func createReply(request: CommentRequest, articleID: UUID, parentCommentID: UUID, user: User, on req: Request) async throws
+    func createReply(request: CommentRequest, articleID: UUID, parentID: UUID, user: User, on req: Request) async throws
         -> CommentDTO
-    func getCommentReplies(parentCommentID: UUID, pagination: PaginationRequest, on req: Request) async throws -> PaginatedReplies
+    func getCommentReplies(parentID: UUID, pagination: PaginationRequest, on req: Request) async throws -> PaginatedReplies
 }
 
 struct CommentService: CommentServiceProtocol, Sendable {
     func getArticleComments(articleID: UUID, pagination: PaginationRequest, on req: Request) async throws -> PaginatedComments {
         let query = Comment.query(on: req.db)
             .filter(\.$article.$id == articleID)
-            .filter(\.$parentComment.$id == .null)
+            .filter(\.$parent.$id == .null)
             .with(\.$user)
 
         let totalItems = try await query.count()
@@ -90,11 +90,11 @@ struct CommentService: CommentServiceProtocol, Sendable {
     func createReply(
         request: CommentRequest,
         articleID: UUID,
-        parentCommentID: UUID,
+        parentID: UUID,
         user: User,
         on req: Request
     ) async throws -> CommentDTO {
-        guard try await Comment.find(parentCommentID, on: req.db) != nil else {
+        guard try await Comment.find(parentID, on: req.db) != nil else {
             throw APIError.commentNotFound
         }
 
@@ -102,7 +102,7 @@ struct CommentService: CommentServiceProtocol, Sendable {
             content: request.content,
             articleID: articleID,
             userID: user.requireID(),
-            parentCommentID: parentCommentID
+            parentID: parentID
         )
         try await reply.save(on: req.db)
 
@@ -118,12 +118,12 @@ struct CommentService: CommentServiceProtocol, Sendable {
     }
 
     func getCommentReplies(
-        parentCommentID: UUID,
+        parentID: UUID,
         pagination: PaginationRequest,
         on req: Request
     ) async throws -> PaginatedReplies {
         let query = Comment.query(on: req.db)
-            .filter(\.$parentComment.$id == parentCommentID)
+            .filter(\.$parent.$id == parentID)
             .with(\.$user)
 
         let totalItems = try await query.count()

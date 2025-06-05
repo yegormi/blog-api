@@ -250,14 +250,14 @@ struct CommentController: RouteCollection, Sendable {
             throw APIError.invalidParameter
         }
 
-        guard let parentCommentID = req.parameters.get("commentID", as: UUID.self) else {
+        guard let commentID = req.parameters.get("commentID", as: UUID.self) else {
             throw APIError.invalidParameter
         }
 
         let commentDTO = try await commentService.createReply(
             request: request,
             articleID: articleID,
-            parentCommentID: parentCommentID,
+            parentID: commentID,
             user: user,
             on: req
         )
@@ -279,7 +279,11 @@ struct CommentController: RouteCollection, Sendable {
             perPage: req.query[Int.self, at: "perPage"]
         )
 
-        let result = try await commentService.getCommentReplies(parentCommentID: commentID, pagination: pagination, on: req)
+        let result = try await commentService.getCommentReplies(
+            parentID: commentID,
+            pagination: pagination,
+            on: req
+        )
 
         return req.successWithPagination(
             result.items,

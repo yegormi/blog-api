@@ -8,23 +8,23 @@ let package = Package(
     ],
     dependencies: [
         // 💧 A server-side Swift web framework.
-        .package(url: "https://github.com/vapor/vapor.git", from: "4.115.0"),
+        .package(url: "https://github.com/vapor/vapor.git", from: "4.122.2"),
         // 🗄 An ORM for SQL and NoSQL databases.
-        .package(url: "https://github.com/vapor/fluent.git", from: "4.9.0"),
+        .package(url: "https://github.com/vapor/fluent.git", from: "4.13.0"),
         // 🐘 Fluent driver for Postgres.
-        .package(url: "https://github.com/vapor/fluent-postgres-driver.git", from: "2.8.0"),
+        .package(url: "https://github.com/vapor/fluent-postgres-driver.git", from: "2.12.0"),
         // 🍃 An expressive, performant, and extensible templating language built for Swift.
-        .package(url: "https://github.com/vapor/leaf.git", from: "4.5.0"),
+        .package(url: "https://github.com/vapor/leaf.git", from: "4.5.2"),
         // 🔵 Non-blocking, event-driven networking for Swift. Used for custom executors
-        .package(url: "https://github.com/apple/swift-nio.git", from: "2.83.0"),
+        .package(url: "https://github.com/apple/swift-nio.git", from: "2.103.0"),
         // 🔐 JWT-based token library to provide legal methods to create and sign payload
         .package(url: "https://github.com/vapor/jwt.git", from: "5.1.2"),
         // ☁️ Amazon S3 library used to upload and store images
-        .package(url: "https://github.com/soto-project/soto", from: "7.7.0"),
+        .package(url: "https://github.com/soto-project/soto", from: "7.15.0"),
         // 🧊 OpenAPI generation for Vapor based projects
-        .package(url: "https://github.com/dankinsoid/VaporToOpenAPI.git", from: "4.8.3"),
+        .package(url: "https://github.com/dankinsoid/VaporToOpenAPI.git", from: "4.9.2"),
         // 📄 A Swift YAML encoder and decoder
-        .package(url: "https://github.com/jpsim/Yams.git", from: "6.0.0"),
+        .package(url: "https://github.com/jpsim/Yams.git", from: "6.2.2"),
     ],
     targets: [
         .executableTarget(
